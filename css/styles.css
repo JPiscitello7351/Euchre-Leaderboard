@@ -1,0 +1,282 @@
+:root {
+  --cat-yellow: #ffc500;
+  --header: #393c41;
+  --bg: #c7c9cd;
+  --surface: #d6d8db;
+  --text: #22252a;
+  --muted: #41454c;
+  --border: #b2b5ba;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.site-header {
+  background: var(--header);
+  border-bottom: 4px solid var(--cat-yellow);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.site-header h1 {
+  margin: 0;
+  padding: 14px 16px 8px;
+  font-size: 1.35rem;
+  color: var(--cat-yellow);
+  letter-spacing: 0.02em;
+}
+
+/* Tabs scroll sideways on phones instead of wrapping into several rows. */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+
+.tabs a {
+  flex: none;
+  padding: 10px 12px;
+  color: #e6e6e6;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border-radius: 6px 6px 0 0;
+  white-space: nowrap;
+}
+.tabs a:hover { color: var(--cat-yellow); }
+.tabs a:focus-visible { outline: 2px solid var(--cat-yellow); outline-offset: -2px; }
+.tabs a[aria-selected="true"] {
+  background: var(--cat-yellow);
+  color: var(--header);
+}
+
+main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+}
+main h2 { margin: 4px 0 12px; }
+
+.placeholder, .muted { color: var(--muted); }
+.error { color: #9b1c1c; font-weight: 600; }
+.pos { color: #1d6b34; font-weight: 600; }
+.neg { color: #9b1c1c; font-weight: 600; }
+
+/* ---------- Controls ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 12px;
+}
+.toolbar label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+
+select, button, input { font: inherit; color: inherit; }
+select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.segmented button {
+  padding: 6px 12px;
+  border: 0;
+  background: var(--surface);
+  cursor: pointer;
+}
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button[aria-pressed="true"] { background: var(--header); color: var(--cat-yellow); font-weight: 600; }
+
+/* ---------- Stats tables ---------- */
+/* Wide tables scroll sideways inside their box; the player column stays put. */
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+table.stats { border-collapse: collapse; width: 100%; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+table.stats th, table.stats td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--border); }
+table.stats tbody tr:last-child > * { border-bottom: 0; }
+table.stats thead th { position: sticky; top: 0; background: var(--header); color: #f2f2f2; padding: 8px 10px; }
+table.stats thead th.sortable { padding: 0; }
+table.stats thead th button {
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-weight: 600;
+  text-align: inherit;
+  cursor: pointer;
+}
+table.stats thead th[aria-sort="ascending"] button::after { content: " ▲"; color: var(--cat-yellow); }
+table.stats thead th[aria-sort="descending"] button::after { content: " ▼"; color: var(--cat-yellow); }
+table.stats tbody th, table.stats thead th.name-col { text-align: left; }
+table.stats tbody th {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  font-weight: 600;
+  box-shadow: 1px 0 0 var(--border);
+}
+table.stats thead th.name-col { position: sticky; left: 0; z-index: 1; }
+table.stats tbody tr:hover > * { background: #e3e4e6; }
+table.stats tr.unranked > * { color: var(--muted); }
+
+/* ---------- Game history ---------- */
+.day h3 { margin: 20px 0 8px; font-size: 1.05rem; }
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--cat-yellow);
+  color: var(--header);
+  font-size: 0.8rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+ol.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 8px;
+}
+.game {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.game .meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
+.team { display: flex; gap: 10px; align-items: baseline; padding: 2px 0; }
+.team .score { min-width: 1.6em; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.team.won .score { color: #1d6b34; }
+.team.won .names { font-weight: 600; }
+.guest { font-style: italic; }
+.ip, .loner, .sets {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.ip { background: #f3d9d9; color: #7a1a1a; }
+.loner { background: #d8ead9; color: #1d5a2c; }
+.sets { background: #dfe3f0; color: #283b6b; }
+
+/* ---------- Forms and panels ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.panel h3 { margin: 0 0 6px; }
+.panel .table-wrap { border: 0; }
+.inline-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0; }
+input[type="text"], input:not([type]), input[type="number"], input[type="date"] {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+input[type="number"] { width: 5em; }
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--header); }
+button.primary { background: var(--header); color: var(--cat-yellow); border-color: var(--header); font-weight: 600; }
+button:disabled, input:disabled { opacity: 0.55; cursor: not-allowed; }
+.notice {
+  background: #fff4c7;
+  border: 1px solid #e6c34d;
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+p.error { background: #f8dede; border: 1px solid #d99; border-radius: 6px; padding: 8px 12px; }
+.danger-zone summary { cursor: pointer; font-weight: 600; color: #9b1c1c; }
+.players-table input.rename { width: 12em; font-weight: 600; }
+table.stats.players-table th, table.stats.players-table td { text-align: left; }
+
+/* ---------- Synergy matrix ---------- */
+table.matrix th, table.matrix td { text-align: center; min-width: 4.2em; }
+table.matrix thead th { padding: 8px 6px; font-size: 0.8rem; }
+table.matrix td.self { background: repeating-linear-gradient(45deg, var(--border) 0 2px, transparent 2px 7px); }
+table.matrix tr.summary > * { border-top: 2px solid var(--header); font-weight: 600; }
+
+/* ---------- Player profile ---------- */
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.stat-card .label { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.stat-card .value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stat-card .sub { font-size: 0.8rem; color: var(--muted); }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 16px; }
+table.stats.compact th, table.stats.compact td { padding: 5px 8px; }
+table.stats.compact thead th { padding: 7px 8px; }
+ul.recent { list-style: none; margin: 0; padding: 0; }
+ul.recent li { padding: 5px 0; border-bottom: 1px solid var(--border); }
+ul.recent li:last-child { border-bottom: 0; }
+
+/* ---------- Game input ---------- */
+.spacer { flex: 1; }
+ol.game-inputs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.game-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 12px; }
+.game-input.has-problems { border-color: #c0392b; }
+.game-input-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.game-input-head button { padding: 3px 9px; }
+.teams-input { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
+fieldset.team-input { border: 1px solid var(--border); border-radius: 6px; margin: 0; padding: 8px 10px 10px; background: var(--bg); }
+/* Player dropdown fills the row with IP beside it; a guest's name box sits
+   on its own line underneath so it never squeezes the name. */
+.seat { display: grid; grid-template-columns: minmax(7.5em, 1fr) auto; gap: 6px; align-items: center; margin: 4px 0; }
+.seat select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+.seat .guest-name { grid-column: 1 / -1; width: 100%; }
+.seat.tm-seat { grid-template-columns: minmax(5em, 1fr) auto auto; }
+.ip-input, .score-input { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+.ip-input input { width: 4.2em; }
+.score-input { margin-top: 6px; font-size: 1rem; }
+.score-input input { width: 4.6em; font-weight: 700; font-size: 1.1rem; }
+ul.problems { margin: 8px 0 0; padding-left: 20px; color: #9b1c1c; font-size: 0.9rem; }
+.sticky-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.stat-card.champion { border-color: var(--cat-yellow); box-shadow: inset 4px 0 0 var(--cat-yellow); }
+
+/* ---------- Tournament mode ---------- */
+.player-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin: 8px 0; }
+.player-picks .pick { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.round-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.round-pills button { min-width: 2.6em; }
+.round-pills button.done { background: #d8ead9; }
+.round-pills button[aria-pressed="true"] { background: var(--header); color: var(--cat-yellow); border-color: var(--header); font-weight: 700; }
+.seat-name { flex: 1 1 6em; font-weight: 600; }
+button.link { border: 0; background: none; padding: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+table.schedule td { text-align: left; }
+ol.finals-groups { margin: 6px 0; padding-left: 20px; }
