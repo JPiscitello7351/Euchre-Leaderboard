@@ -1,4 +1,5 @@
 import { leaderboard, pairStats, seasonFor, sortGames, GUEST } from '../stats.js';
+import { isCurrentMember, rankedIn } from '../members.js';
 import { esc, playerName, num, signed, pct, formatDate } from '../format.js';
 
 const MIN_PAIR_GAMES = 3; // partners/opponents need this many games to be listed
@@ -6,24 +7,24 @@ const MIN_PAIR_GAMES = 3; // partners/opponents need this many games to be liste
 const state = { playerId: null, format: 4 };
 
 export function render(el, league) {
-  const players = [...league.players].sort((a, b) => b.active - a.active || a.name.localeCompare(b.name));
+  const players = [...league.players].sort((a, b) => isCurrentMember(b) - isCurrentMember(a) || a.name.localeCompare(b.name));
   if (!players.length) {
     el.innerHTML = '<p class="placeholder">No players yet.</p>';
     return;
   }
   state.playerId ??= players[0].id;
   const me = state.playerId;
-  const isRanked = (key) => key === GUEST || league.playerById.get(key)?.active !== false;
   const formatGames = league.games.filter((g) => g.format === state.format);
   const myGames = sortGames(formatGames.filter((g) => g.players.some((p) => p.player_id === me)));
 
   // One leaderboard row per season (plus all time) for this player.
-  const scopes = [{ name: 'All time', games: formatGames }, ...[...league.seasons].reverse().map((s) => ({
+  const scopes = [{ name: 'All time', season: null, games: formatGames }, ...[...league.seasons].reverse().map((s) => ({
     name: s.name,
+    season: s,
     games: formatGames.filter((g) => seasonFor(g.played_on, league.seasons)?.id === s.id),
   }))];
   const seasonRows = scopes
-    .map((s) => ({ name: s.name, row: s.games.length ? leaderboard(s.games, { isRanked }).find((r) => r.key === me) : null }))
+    .map((s) => ({ name: s.name, row: s.games.length ? leaderboard(s.games, { isRanked: rankedIn(league, s.season) }).find((r) => r.key === me) : null }))
     .filter((s) => s.row);
   const overall = seasonRows[0]?.row;
 
@@ -56,7 +57,7 @@ export function render(el, league) {
     <div class="toolbar">
       <label>Player
         <select id="pf-player">
-          ${players.map((p) => `<option value="${p.id}" ${p.id === me ? 'selected' : ''}>${esc(p.name)}${p.active ? '' : ' (inactive)'}</option>`).join('')}
+          ${players.map((p) => `<option value="${p.id}" ${p.id === me ? 'selected' : ''}>${esc(p.name)}${isCurrentMember(p) ? '' : ' (former)'}</option>`).join('')}
         </select>
       </label>
       <div class="segmented" role="group" aria-label="Game format">
@@ -66,7 +67,7 @@ export function render(el, league) {
     ${!overall ? `<p class="placeholder">No ${state.format}-handed games yet.</p>` : `
       <div class="stat-cards">
         ${card('Record', `${overall.wins}–${overall.losses}`, `${overall.games} games · all time`)}
-        ${card('Win %', pct(overall.winPct), overall.rank ? `Rank ${overall.rank} all time` : 'Unranked (inactive)')}
+        ${card('Win %', pct(overall.winPct), overall.rank ? `Rank ${overall.rank} all time` : 'Unranked (former member)')}
         ${card('PPG', num(overall.ppg), `${signed(overall.ppgPlusMinus)} vs league`)}
         ${card('Synergy', signed(overall.avgSynergy), `Expected diff ${signed(overall.avgExpectedDiff)}`)}
         ${card('Idiot PPG', num(overall.idiotPpg), `${overall.idiotPoints} idiot points`)}

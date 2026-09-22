@@ -37,8 +37,8 @@ TOURNAMENT_FILES = {
 
 NAME_FIXES = {"GIlad": "Gilad", "TItts": "Titts", "titts": "Titts", "NIKOLAS EBELING": "Nik"}
 
-# Former members: kept with their history, shown unranked.
-INACTIVE = {"Cameron", "Titts"}
+# Former members: kept with their history. They left after their last game.
+FORMER = {"Cameron", "Titts"}
 
 # Seats the sheets got wrong: (date, format, game # that day, team, listed name) -> None for Guest.
 SEAT_FIXES = {
@@ -221,6 +221,13 @@ def build(folder):
         tournaments.append({"id": t_id, "held_on": held_on.isoformat(), "name": None, "format": 4, "schedule": details})
 
     names = sorted({s["name"] for g in all_games for s in g["seats"] if s["name"]})
+    first_game, last_game = {}, {}
+    for g in all_games:
+        for s in g["seats"]:
+            if s["name"]:
+                d = g["played_on"].isoformat()
+                first_game[s["name"]] = min(first_game.get(s["name"], d), d)
+                last_game[s["name"]] = max(last_game.get(s["name"], d), d)
     player_ids = {name: i for i, name in enumerate(names, start=1)}
 
     # Results-only standings refer to players by id.
@@ -267,10 +274,13 @@ def build(folder):
 
     backup = {
         "kind": "euchre-league-backup",
-        "version": 1,
+        "version": 2,
         "exported_at": datetime.now().isoformat(timespec="seconds"),
         "settings": {"max_guests_per_game": 1},
-        "players": [{"id": i, "name": n, "active": n not in INACTIVE} for n, i in player_ids.items()],
+        "players": [
+            {"id": i, "name": n, "joined_on": first_game[n], "left_on": last_game[n] if n in FORMER else None}
+            for n, i in player_ids.items()
+        ],
         "seasons": [{"id": i, "name": n, "starts_on": d.isoformat()} for i, (n, d) in enumerate(SEASONS, start=1)],
         "tournaments": tournaments,
         "games": games_out,

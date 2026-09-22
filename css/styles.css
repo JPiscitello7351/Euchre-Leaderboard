@@ -217,7 +217,9 @@ button:disabled, input:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 p.error { background: #f8dede; border: 1px solid #d99; border-radius: 6px; padding: 8px 12px; }
 .danger-zone summary { cursor: pointer; font-weight: 600; color: #9b1c1c; }
-.players-table input.rename { width: 12em; font-weight: 600; }
+.players-table input.rename { width: 8.5em; font-weight: 600; }
+.players-table input[type="date"] { width: 9.5em; }
+table.stats.players-table th, table.stats.players-table td { padding: 6px; }
 table.stats.players-table th, table.stats.players-table td { text-align: left; }
 
 /* ---------- Synergy matrix ---------- */
@@ -280,3 +282,4 @@ ul.problems { margin: 8px 0 0; padding-left: 20px; color: #9b1c1c; font-size: 0.
 button.link { border: 0; background: none; padding: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 table.schedule td { text-align: left; }
 ol.finals-groups { margin: 6px 0; padding-left: 20px; }
+.players-table tr.former input { color: var(--muted); background: var(--bg); }

@@ -1,6 +1,7 @@
 import { supabase } from '../data.js';
 import { seasonFor, sortGames } from '../stats.js';
 import { esc, formatDate } from '../format.js';
+import { isMemberOn } from '../members.js';
 
 // Game Input edits one date + format at a time: every league game from that
 // day is loaded into a draft, edited here, and saved together with
@@ -70,9 +71,9 @@ export function render(el, league, { reload }) {
   const season = seasonFor(state.date, league.seasons);
   const tournamentGames = league.games.filter((g) => g.played_on === state.date && g.format === state.format && g.tournament_id).length;
   const usedIds = new Set(state.draft.flatMap((g) => g.seats.map((s) => s.pick)));
-  // Active players, plus anyone inactive who is already in this day's games.
+  // Members on this date, plus anyone already in this day's games.
   const choices = [...league.players]
-    .filter((p) => p.active || usedIds.has(String(p.id)))
+    .filter((p) => isMemberOn(p, state.date) || usedIds.has(String(p.id)))
     .sort((a, b) => a.name.localeCompare(b.name));
   const allProblems = state.draft.map((g) => problems(g, league));
   const shown = state.message;

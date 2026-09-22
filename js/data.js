@@ -39,6 +39,24 @@ async function loadFromFile(path) {
   const res = await fetch(path);
   if (!res.ok) throw new Error(`Loading ${path}: ${res.status}`);
   const backup = await res.json();
+  // Version 1 backups have an "active" flag instead of membership dates:
+  // joined = first game, left = last game for inactive players (as the
+  // database upgrade does).
+  if (backup.version === 1) {
+    const first = new Map();
+    const last = new Map();
+    for (const g of backup.games) {
+      for (const p of g.players) {
+        if (p.player_id === null) continue;
+        if (!(first.get(p.player_id) <= g.played_on)) first.set(p.player_id, g.played_on);
+        if (!(last.get(p.player_id) >= g.played_on)) last.set(p.player_id, g.played_on);
+      }
+    }
+    for (const p of backup.players) {
+      p.joined_on ??= first.get(p.id) ?? (p.created_at ?? new Date().toISOString()).slice(0, 10);
+      p.left_on ??= p.active === false ? last.get(p.id) ?? p.joined_on : null;
+    }
+  }
   return {
     settings: backup.settings,
     players: backup.players,

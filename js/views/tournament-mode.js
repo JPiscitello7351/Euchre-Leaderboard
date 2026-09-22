@@ -3,6 +3,7 @@ import { prelimSchedule, finalsSchedule, balance, MIN_PLAYERS, MAX_PLAYERS } fro
 import { standings, prelimStandings } from '../tournament.js';
 import { seasonFor } from '../stats.js';
 import { esc, formatDate, playerName, tournamentTitle } from '../format.js';
+import { isMemberOn } from '../members.js';
 
 // Tournament Mode runs a tournament live:
 //   setup  - pick date and players, preview the schedule (re-roll if wanted), start
@@ -142,7 +143,7 @@ function renderList({ el, league, readOnly, banner, ...ctx }, appRun) {
 function renderSetup(ctx) {
   const { el, league, readOnly, banner } = ctx;
   const s = state.setup;
-  const active = league.players.filter((p) => p.active).sort((a, b) => a.name.localeCompare(b.name));
+  const active = league.players.filter((p) => isMemberOn(p, s.date)).sort((a, b) => a.name.localeCompare(b.name));
   const n = s.players.size;
   const countOk = n >= MIN_PLAYERS && n <= MAX_PLAYERS;
   const season = seasonFor(s.date, league.seasons);
@@ -183,7 +184,11 @@ function renderSetup(ctx) {
 
   const rerender = rerenderFn(ctx);
   el.querySelector('#tm-date').addEventListener('change', (e) => {
-    if (e.target.value) s.date = e.target.value;
+    if (!e.target.value) return;
+    s.date = e.target.value;
+    // Drop anyone who isn't a member on the new date.
+    for (const id of s.players) if (!isMemberOn(league.playerById.get(id), s.date)) s.players.delete(id);
+    s.preview = null;
     rerender();
   });
   for (const box of el.querySelectorAll('.player-picks input')) {

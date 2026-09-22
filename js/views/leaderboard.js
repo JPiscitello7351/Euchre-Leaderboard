@@ -1,9 +1,10 @@
-import { leaderboard, seasonFor, GUEST } from '../stats.js';
+import { leaderboard, seasonFor } from '../stats.js';
+import { rankedIn } from '../members.js';
 import { esc, playerName, num, signed, pct, int } from '../format.js';
 
 // label, tooltip, value -> text. `lowIsGood` columns sort ascending first.
 const COLUMNS = [
-  { id: 'rank', label: '#', tip: 'Rank by win %. Inactive players are listed unranked at the bottom.', fmt: int, lowIsGood: true },
+  { id: 'rank', label: '#', tip: 'Rank by win %. Players who weren’t members when the season ended are listed unranked at the bottom.', fmt: int, lowIsGood: true },
   { id: 'name', label: 'Player', tip: 'All guests are combined into one Guest entry.' },
   { id: 'wins', label: 'W', tip: 'Wins', fmt: int },
   { id: 'losses', label: 'L', tip: 'Losses', fmt: int, lowIsGood: true },
@@ -52,7 +53,7 @@ export function render(el, league) {
   const games = league.games.filter(
     (g) => g.format === state.format && (!season || seasonFor(g.played_on, league.seasons)?.id === season.id)
   );
-  const isRanked = (key) => key === GUEST || league.playerById.get(key)?.active !== false;
+  const isRanked = rankedIn(league, season);
   let rows = leaderboard(games, { isRanked }).map((r) => ({ ...r, name: playerName(league, r.key) }));
 
   if (state.sort) {

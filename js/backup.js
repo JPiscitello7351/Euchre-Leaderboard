@@ -6,11 +6,12 @@
 import { supabase } from './data.js';
 import { leaderboard, seasonFor, sortGames, GUEST } from './stats.js';
 import { tournamentTitle } from './format.js';
+import { rankedIn } from './members.js';
 
 export function buildBackup(league) {
   return {
     kind: 'euchre-league-backup',
-    version: 1,
+    version: 2,
     exported_at: new Date().toISOString(),
     settings: league.settings,
     players: league.players,
@@ -88,11 +89,10 @@ export async function exportExcel(league) {
 
   XLSX.utils.book_append_sheet(
     wb,
-    XLSX.utils.aoa_to_sheet([['Player', 'Active'], ...league.players.map((p) => [p.name, p.active ? 'Yes' : 'No'])]),
+    XLSX.utils.aoa_to_sheet([['Player', 'Joined', 'Left'], ...league.players.map((p) => [p.name, p.joined_on, p.left_on ?? ''])]),
     'Players'
   );
 
-  const isRanked = (key) => key === GUEST || league.playerById.get(key)?.active !== false;
   const scopes = [...league.seasons.map((s) => ({ label: s.name, season: s })), { label: 'All time', season: null }];
   for (const { label, season } of scopes) {
     for (const format of [4, 6]) {
@@ -103,7 +103,7 @@ export async function exportExcel(league) {
       const header = ['Rank', 'Player', 'Wins', 'Losses', 'Win %', 'Games Behind', 'Points For', 'Points Against', 'Point Diff',
         'PPG', '+/- PPG', 'Idiot Points', 'Idiot PPG', '+/- IPPG', 'AVG Point Diff', 'AVG Synergy', 'AVG Diff Expected',
         'OW%', 'OOW%', 'SoS', 'SoS Rank', 'Current Streak', 'Longest Win Streak', 'Longest Loss Streak'];
-      const rows = leaderboard(games, { isRanked }).map((r) => [
+      const rows = leaderboard(games, { isRanked: rankedIn(league, season) }).map((r) => [
         r.rank ?? '', r.key === GUEST ? 'Guest' : league.playerById.get(r.key)?.name, r.wins, r.losses, r.winPct, r.gamesBehind ?? '',
         r.pointsFor, r.pointsAgainst, r.pointDiff, r.ppg, r.ppgPlusMinus, r.idiotPoints, r.idiotPpg, r.idiotPpgPlusMinus,
         r.avgPointDiff, r.avgSynergy, r.avgExpectedDiff, r.oppWinPct, r.oppOppWinPct, r.sos, r.sosRank,

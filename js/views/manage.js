@@ -1,6 +1,7 @@
 import { supabase } from '../data.js';
 import { downloadBackup, exportExcel, restoreBackup } from '../backup.js';
-import { esc } from '../format.js';
+import { esc, formatDate } from '../format.js';
+import { isCurrentMember, today } from '../members.js';
 
 let message = null; // { ok: boolean, text } shown after an action
 
@@ -12,7 +13,7 @@ export function render(el, league, { reload }) {
   for (const g of league.games) {
     for (const p of g.players) if (p.player_id !== null) gamesPlayed.set(p.player_id, (gamesPlayed.get(p.player_id) ?? 0) + 1);
   }
-  const players = [...league.players].sort((a, b) => b.active - a.active || a.name.localeCompare(b.name));
+  const players = [...league.players].sort((a, b) => isCurrentMember(b) - isCurrentMember(a) || a.name.localeCompare(b.name));
   const disabled = readOnly(league) ? 'disabled' : '';
   const shown = message;
   message = null; // show each message once
@@ -23,19 +24,22 @@ export function render(el, league, { reload }) {
 
     <section class="panel">
       <h3>Players</h3>
-      <p class="muted">Inactive players keep their history but can’t be picked for new games and are listed unranked.
+      <p class="muted">A player is ranked in a season if they’re still a member when it ends, and can be picked for
+        games played while they’re a member. Set a <strong>Left</strong> date when someone leaves; their history stays.
         Adding a player whose name matches a named guest moves those guest games to the new player.</p>
       <form id="add-player" class="inline-form">
         <input name="name" placeholder="New player name" required maxlength="40" autocomplete="off" ${disabled}>
+        <label>Joined <input type="date" name="joined" value="${today()}" required ${disabled}></label>
         <button type="submit" class="primary" ${disabled}>Add player</button>
       </form>
       <div class="table-wrap">
         <table class="stats players-table">
-          <thead><tr><th scope="col">Name</th><th scope="col">Active</th><th scope="col">Games</th><th scope="col"></th></tr></thead>
+          <thead><tr><th scope="col">Name</th><th scope="col">Joined</th><th scope="col">Left</th><th scope="col">Games</th><th scope="col"></th></tr></thead>
           <tbody>
-            ${players.map((p) => `<tr data-id="${p.id}">
+            ${players.map((p) => `<tr data-id="${p.id}" class="${isCurrentMember(p) ? '' : 'former'}" title="${isCurrentMember(p) ? '' : 'Former member'}">
               <th scope="row"><input class="rename" value="${esc(p.name)}" aria-label="Name" maxlength="40" ${disabled}></th>
-              <td><input type="checkbox" class="active" ${p.active ? 'checked' : ''} aria-label="${esc(p.name)} active" ${disabled}></td>
+              <td><input type="date" class="joined" value="${p.joined_on}" required aria-label="${esc(p.name)} joined" ${disabled}></td>
+              <td><input type="date" class="left" value="${p.left_on ?? ''}" aria-label="${esc(p.name)} left" ${disabled}></td>
               <td>${gamesPlayed.get(p.id) ?? 0}</td>
               <td>${gamesPlayed.get(p.id) ? '' : `<button type="button" class="delete" ${disabled}>Delete</button>`}</td>
             </tr>`).join('')}
@@ -83,8 +87,9 @@ export function render(el, league, { reload }) {
   el.querySelector('#add-player').addEventListener('submit', (e) => {
     e.preventDefault();
     const name = e.target.name.value.trim();
+    const joined_on = e.target.joined.value;
     act(async () => {
-      check(await supabase.from('players').insert({ name }));
+      check(await supabase.from('players').insert({ name, joined_on }));
       return `Added ${name}.`;
     });
   });
@@ -98,11 +103,19 @@ export function render(el, league, { reload }) {
         return `Renamed ${player.name} to ${name}.`;
       });
     });
-    tr.querySelector('.active').addEventListener('change', (e) => {
-      const active = e.target.checked;
+    tr.querySelector('.joined').addEventListener('change', (e) => {
+      const joined_on = e.target.value;
+      if (!joined_on) return;
       act(async () => {
-        check(await supabase.from('players').update({ active }).eq('id', id));
-        return `${player.name} is now ${active ? 'active' : 'inactive'}.`;
+        check(await supabase.from('players').update({ joined_on }).eq('id', id));
+        return `${player.name} joined ${formatDate(joined_on)}.`;
+      });
+    });
+    tr.querySelector('.left').addEventListener('change', (e) => {
+      const left_on = e.target.value || null;
+      act(async () => {
+        check(await supabase.from('players').update({ left_on }).eq('id', id));
+        return left_on ? `${player.name} left ${formatDate(left_on)}.` : `${player.name} is a current member again.`;
       });
     });
     tr.querySelector('.delete')?.addEventListener('click', () => {
@@ -145,7 +158,8 @@ function friendly(error) {
   const m = error.message;
   if (m.includes('players_name_key')) return 'There’s already a player with that name.';
   if (m.includes('players_name_check')) return 'Names can’t be blank or “Guest”.';
-  if (m.includes('game_players_player_id_fkey')) return 'That player has games, so they can’t be deleted. Mark them inactive instead.';
+  if (m.includes('game_players_player_id_fkey')) return 'That player has games, so they can’t be deleted. Set a Left date instead.';
+  if (m.includes('players_left_after_joined')) return 'The Left date can’t be before the Joined date.';
   if (m.includes('max_guests_per_game')) return 'Guests per game must be between 0 and 3.';
   return m;
 }

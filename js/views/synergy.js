@@ -1,4 +1,5 @@
-import { pairStats, seasonFor, GUEST } from '../stats.js';
+import { pairStats, seasonFor } from '../stats.js';
+import { rankedIn } from '../members.js';
 import { esc, playerName, num, signed, pct, int } from '../format.js';
 
 // Each metric reads one cell. `kind` picks the table: partners (same team)
@@ -38,9 +39,10 @@ export function render(el, league) {
   );
   const metric = METRICS.find((m) => m.id === state.metric);
   const stats = games.length ? pairStats(games) : null;
-  // Inactive players still count in everyone's numbers but get no row or
-  // column. Order by win % so the grid reads like the leaderboard.
-  const shown = (key) => key === GUEST || league.playerById.get(key)?.active !== false;
+  // Players who aren't ranked for this season (not members when it ended)
+  // still count in everyone's numbers but get no row or column. Order by
+  // win % so the grid reads like the leaderboard.
+  const shown = rankedIn(league, season);
   const keys = stats ? stats.keys.filter(shown).sort((a, b) => stats.winPct.get(b) - stats.winPct.get(a)) : [];
   const table = stats?.[metric.kind];
 
@@ -86,7 +88,7 @@ export function render(el, league) {
         ${[4, 6].map((f) => `<button type="button" data-format="${f}" aria-pressed="${state.format === f}">${f}-handed</button>`).join('')}
       </div>
     </div>
-    <p class="muted">${metric.note ? `${esc(metric.note)} ` : ''}Inactive players are hidden.</p>
+    <p class="muted">${metric.note ? `${esc(metric.note)} ` : ''}Only players ranked for this season are shown.</p>
     ${
       !stats
         ? '<p class="placeholder">No games for this selection.</p>'
