@@ -25,12 +25,27 @@ const state = {
   setup: { date: today(), players: new Set(), preview: null, seed: null },
   roundRef: null, // 'prelim-3' etc.; null = first round with unsaved tables
   runView: 'round', // 'round' (large cards) | 'table' (every game)
+  focus: false, // current round only, everything else hidden
   drafts: new Map(), // slot key -> unsaved inputs
   message: null,
   busy: false,
 };
 
 const isAppRun = (t) => Array.isArray(t.schedule?.prelim?.rounds);
+
+// Focus mode shows only the current round. Where the browser allows it, it
+// also goes truly fullscreen; leaving that (Esc, back gesture) leaves focus mode.
+let rerenderLast = null;
+function exitFocus() {
+  state.focus = false;
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+}
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && state.focus) {
+    state.focus = false;
+    rerenderLast?.();
+  }
+});
 const slotKey = (phase, round, seq) => `${phase}-${round}-${seq}`;
 
 // seq numbers every table of the day in play order: prelim tables first, then finals.
@@ -80,6 +95,7 @@ export function render(el, league, { reload }) {
     readOnly ? `<p class="notice">Viewing ${esc(league.source)}: tournaments can’t be saved here.</p>` : ''}`;
   const ctx = { el, league, reload, readOnly, banner };
 
+  document.body.classList.remove('tm-focus');
   if (state.screen === 'setup') return renderSetup(ctx);
   const t = league.tournaments.find((x) => x.id === state.tournamentId);
   if (state.screen === 'run' && t && isAppRun(t)) return renderRun(ctx, t);
@@ -341,7 +357,7 @@ function renderRun(ctx, t) {
   };
   const tableView = `
     <div class="table-wrap"><table class="stats grid-input tm-grid">
-      <thead><tr><th scope="col">Round</th><th scope="col">Tbl</th>${teamHeader('A')}<th scope="col">A</th><th scope="col" title="Team A sets">Sets</th><th scope="col">B</th><th scope="col" title="Team B sets">Sets</th>${teamHeader('B')}<th scope="col"><span class="visually-hidden">Save</span></th></tr></thead>
+      <thead><tr><th scope="col">Round</th><th scope="col">Tbl</th>${teamHeader('A')}<th scope="col" class="c">A</th><th scope="col" title="Team A sets">Sets</th><th scope="col" class="c">B</th><th scope="col" title="Team B sets">Sets</th>${teamHeader('B')}<th scope="col"><span class="visually-hidden">Save</span></th></tr></thead>
       <tbody>${rounds.map((r) => r.map((sl, i) => tableRow(sl, i === 0)).join('')).join('')}</tbody>
     </table></div>
     <div class="inline-form">
@@ -350,7 +366,19 @@ function renderRun(ctx, t) {
     </div>`;
 
   const champion = p.complete ? rows[0] : null;
-  el.innerHTML = `
+  const focus = state.focus && state.runView === 'round';
+  document.body.classList.toggle('tm-focus', focus);
+  if (focus) {
+    el.innerHTML = `
+    ${banner}
+    <div class="focus-bar">
+      <strong>${esc(tournamentTitle(league, t))}</strong>
+      <span class="spacer"></span>
+      <button type="button" id="tm-refresh" title="Load results saved from other phones">Refresh</button>
+      <button type="button" class="primary" id="tm-exit-focus">Exit fullscreen</button>
+    </div>
+    ${roundView}`;
+  } else el.innerHTML = `
     ${banner}
     <div class="toolbar">
       <button type="button" id="tm-back">← All tournaments</button>
@@ -365,6 +393,7 @@ function renderRun(ctx, t) {
         <button type="button" data-view="round" aria-pressed="${state.runView === 'round'}">Current round</button>
         <button type="button" data-view="table" aria-pressed="${state.runView === 'table'}">All games</button>
       </div>
+      ${state.runView === 'round' ? '<button type="button" id="tm-fullscreen" title="Show only the current round">⛶ Fullscreen</button>' : ''}
     </div>
 
     ${state.runView === 'table' ? tableView : roundView}
@@ -392,6 +421,7 @@ function renderRun(ctx, t) {
     </details>`;
 
   const rerender = rerenderFn(ctx);
+  rerenderLast = rerender;
   const saveSlot = async (sl) => {
     const d = draftOf(sl);
     check(await supabase.rpc('save_tournament_game', {
@@ -414,8 +444,18 @@ function renderRun(ctx, t) {
     state.drafts.delete(sl.key);
   };
 
-  el.querySelector('#tm-back').addEventListener('click', () => {
+  el.querySelector('#tm-back')?.addEventListener('click', () => {
     state.screen = 'list';
+    rerender();
+  });
+  el.querySelector('#tm-fullscreen')?.addEventListener('click', () => {
+    state.focus = true;
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    rerender();
+    window.scrollTo(0, 0);
+  });
+  el.querySelector('#tm-exit-focus')?.addEventListener('click', () => {
+    exitFocus();
     rerender();
   });
   el.querySelector('#tm-refresh').addEventListener('click', () => ctx.reload());
@@ -490,7 +530,7 @@ function renderRun(ctx, t) {
       return 'Finals tables set from the prelim standings.';
     })
   );
-  el.querySelector('#tm-delete').addEventListener('click', () => {
+  el.querySelector('#tm-delete')?.addEventListener('click', () => {
     if (!confirm(`Delete ${tournamentTitle(league, t)}?`)) return;
     act(ctx, async () => {
       check(await supabase.rpc('delete_tournament', { p_tournament_id: t.id }));

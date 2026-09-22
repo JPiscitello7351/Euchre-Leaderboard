@@ -261,7 +261,7 @@ ul.problems { margin: 8px 0 0; padding-left: 20px; color: #9b1c1c; font-size: 0.
 .round-pills button.done { background: #d8ead9; }
 .round-pills button[aria-pressed="true"] { background: var(--header); color: var(--cat-yellow); border-color: var(--header); font-weight: 700; }
 button.link { border: 0; background: none; padding: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
-table.schedule td { text-align: left; }
+table.schedule th, table.schedule td { text-align: left; }
 ol.finals-groups { margin: 6px 0; padding-left: 20px; }
 .players-table tr.former input { color: var(--muted); background: var(--bg); }
 table.matrix td.mirror { background: transparent; }
@@ -320,3 +320,14 @@ ol.round-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14
 /* All-games table */
 table.tm-grid .name-cell { font-weight: 600; }
 table.tm-grid input.num { width: 3.2em; }
+
+/* Tournament mode fullscreen: only the current round */
+body.tm-focus .site-header, body.tm-focus main > h2 { display: none; }
+body.tm-focus main { max-width: none; padding: 10px 12px; }
+.focus-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+body.tm-focus ol.round-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+
+/* Column headers over centred numbers */
+table.stats thead th.c { text-align: center; }
+table.stats td.c { text-align: center; }
+table.results-games tbody th { position: static; box-shadow: none; white-space: nowrap; }

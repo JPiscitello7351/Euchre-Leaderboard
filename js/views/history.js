@@ -44,7 +44,7 @@ export function render(el, league) {
       .sort((a, b) => a.seat - b.seat)
       .map((p) => `<td class="${won ? 'won' : ''}">${seatName(league, p)}</td><td class="ip-cell">${p.idiot_points || ''}</td>`)
       .join('');
-  const header = (team) => Array.from({ length: perTeam }, (_, i) => `<th scope="col">${team}${i + 1}</th><th scope="col" title="Idiot points">IP</th>`).join('');
+  const header = (team) => Array.from({ length: perTeam }, (_, i) => `<th scope="col">${team}${i + 1}</th><th scope="col" class="c" title="Idiot points">IP</th>`).join('');
 
   const players = [...league.players].sort((a, b) => a.name.localeCompare(b.name));
   el.innerHTML = `
@@ -69,7 +69,7 @@ export function render(el, league) {
     ${games.length === 0 ? '<p class="placeholder">No games match.</p>' : `
     <div class="table-wrap"><table class="stats history">
       <thead><tr>
-        <th scope="col">Date</th><th scope="col">#</th>${header('A')}<th scope="col">A</th><th scope="col">B</th>${header('B')}<th scope="col">Notes</th>
+        <th scope="col">Date</th><th scope="col">#</th>${header('A')}<th scope="col" class="c">A</th><th scope="col" class="c">B</th>${header('B')}<th scope="col">Notes</th>
       </tr></thead>
       <tbody>
         ${nights.map(([day, dayGames]) => dayGames.map((g, i) => {

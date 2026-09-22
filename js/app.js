@@ -39,6 +39,12 @@ function render() {
     if (active) link.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
+  // Tournament Mode's fullscreen only applies on its own tab.
+  if (current.id !== 'tournament-mode') {
+    document.body.classList.remove('tm-focus');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
   const heading = `<h2>${current.label}</h2>`;
   if (loadError) {
     view.innerHTML = `${heading}<p class="error">Couldn’t load league data: ${esc(loadError.message)}</p>`;

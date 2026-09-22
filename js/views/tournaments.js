@@ -4,16 +4,38 @@ import { esc, playerName, formatDate, num, tournamentTitle } from '../format.js'
 
 const state = { tournamentId: null };
 
-function gameLine(league, g) {
-  const side = (team) => g.players.filter((p) => p.team === team).sort((a, b) => a.seat - b.seat)
-    .map((p) => esc(playerName(league, p.player_id ?? 'guest')) + (p.alone_wins ? ` <span class="loner">${p.alone_wins} alone</span>` : '') + (p.idiot_points ? ` <span class="ip">${p.idiot_points} IP</span>` : ''))
-    .join(', ');
-  const sets = (n) => (n ? ` <span class="sets">${n} set${n === 1 ? '' : 's'}</span>` : '');
-  const aWon = g.team_a_points > g.team_b_points;
-  return `<li class="game">
-    <div class="team ${aWon ? 'won' : ''}"><span class="score">${g.team_a_points}</span><span class="names">${side('A')}${sets(g.team_a_sets)}</span></div>
-    <div class="team ${aWon ? '' : 'won'}"><span class="score">${g.team_b_points}</span><span class="names">${side('B')}${sets(g.team_b_sets)}</span></div>
-  </li>`;
+// All of a tournament's games as one read-only table, laid out like
+// Tournament Mode's "All games" view. Zeros are left blank so the
+// alone wins, idiot points and sets that did happen stand out.
+function gamesTable(league, games) {
+  const blank = (n) => (n ? n : '');
+  const teamHeader = (tk) => [1, 2].map((i) => `<th scope="col">${tk}${i}</th><th scope="col" class="c" title="Alone wins">Alone</th><th scope="col" class="c" title="Idiot points">IP</th>`).join('');
+  const teamCells = (g, tk, won) => g.players
+    .filter((p) => p.team === tk)
+    .sort((a, b) => a.seat - b.seat)
+    .map((p) => `<td class="${won ? 'won' : ''}">${esc(playerName(league, p.player_id ?? 'guest'))}</td><td class="c">${blank(p.alone_wins)}</td><td class="c ip-cell">${blank(p.idiot_points)}</td>`)
+    .join('');
+  let lastRound = null;
+  let tableNo = 0;
+  const rows = games.map((g) => {
+    const round = `${g.tournament_phase}-${g.tournament_round}`;
+    const first = round !== lastRound;
+    tableNo = first ? 1 : tableNo + 1;
+    lastRound = round;
+    const aWon = g.team_a_points > g.team_b_points;
+    return `<tr class="${first ? 'night-start' : ''}">
+      <th scope="row">${first ? `${g.tournament_phase === 'final' ? 'Finals' : 'Prelims'} R${g.tournament_round}` : ''}</th>
+      <td class="c muted">${tableNo}</td>
+      ${teamCells(g, 'A', aWon)}
+      <td class="score-cell ${aWon ? 'won' : ''}">${g.team_a_points}</td><td class="c">${blank(g.team_a_sets)}</td>
+      <td class="score-cell ${aWon ? '' : 'won'}">${g.team_b_points}</td><td class="c">${blank(g.team_b_sets)}</td>
+      ${teamCells(g, 'B', !aWon)}
+    </tr>`;
+  });
+  return `<div class="table-wrap"><table class="stats history results-games">
+    <thead><tr><th scope="col">Round</th><th scope="col" class="c">Tbl</th>${teamHeader('A')}<th scope="col" class="c">A</th><th scope="col" class="c" title="Team A sets">Sets</th><th scope="col" class="c">B</th><th scope="col" class="c" title="Team B sets">Sets</th>${teamHeader('B')}</tr></thead>
+    <tbody>${rows.join('')}</tbody>
+  </table></div>`;
 }
 
 export function render(el, league) {
@@ -34,12 +56,6 @@ export function render(el, league) {
     // Tournaments run in the app are finished once every finals table is saved.
     const slots = t.schedule?.finals?.rounds.reduce((n, r) => n + r.tables.length, 0);
     const finished = !t.schedule?.prelim || (slots !== undefined && games.filter((g) => g.tournament_phase === 'final').length === slots);
-    const rounds = new Map();
-    for (const g of games) {
-      const id = `${g.tournament_phase}-${g.tournament_round}`;
-      if (!rounds.has(id)) rounds.set(id, { label: `${g.tournament_phase === 'final' ? 'Finals' : 'Prelims'} round ${g.tournament_round}`, games: [] });
-      rounds.get(id).games.push(g);
-    }
     body = `
       <div class="stat-cards">
         <div class="stat-card champion"><div class="label">${finished ? 'Champion' : 'Leader (in progress)'}</div><div class="value">${finished ? '🏆 ' : ''}${esc(playerName(league, champ.key))}</div><div class="sub">${champ.total} points</div></div>
@@ -53,7 +69,10 @@ export function render(el, league) {
           <tbody>${rows.map((r) => `<tr><td>${r.place}</td><th scope="row">${esc(playerName(league, r.key))}</th><td><strong>${r.total}</strong></td><td>${r.prelimTotal}</td><td>${r.finalTotal || '–'}</td><td>${r.wins}–${r.losses}</td><td>${r.gamePoints}</td><td>${r.sets}</td><td>${r.aloneWins}</td><td>${r.idiotPoints}</td><td>${num(r.oppPpg, 1)}</td></tr>`).join('')}</tbody>
         </table></div>
       </section>
-      ${[...rounds.values()].map((r) => `<section class="day"><h3>${r.label}</h3><ol class="games">${r.games.map((g) => gameLine(league, g)).join('')}</ol></section>`).join('')}`;
+      <section class="panel">
+        <h3>Games</h3>
+        ${gamesTable(league, games)}
+      </section>`;
   } else if (recorded) {
     body = `
       <div class="stat-cards">

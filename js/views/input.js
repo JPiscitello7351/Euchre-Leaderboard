@@ -112,7 +112,7 @@ export function render(el, league, { reload }) {
 
     ${state.draft.length ? `<div class="table-wrap"><table class="stats grid-input">
       <thead><tr>
-        <th scope="col">#</th>${header('A')}<th scope="col">A</th><th scope="col">B</th>${header('B')}<th scope="col"><span class="visually-hidden">Actions</span></th>
+        <th scope="col">#</th>${header('A')}<th scope="col" class="c">A</th><th scope="col" class="c">B</th>${header('B')}<th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr></thead>
       <tbody>
         ${state.draft.map((g, gi) => `<tr class="game-row ${allProblems[gi].length ? 'has-problems' : ''}">
