@@ -242,23 +242,6 @@ ul.recent li:last-child { border-bottom: 0; }
 
 /* ---------- Game input ---------- */
 .spacer { flex: 1; }
-ol.game-inputs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.game-input { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 12px; }
-.game-input.has-problems { border-color: #c0392b; }
-.game-input-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.game-input-head button { padding: 3px 9px; }
-.teams-input { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
-fieldset.team-input { border: 1px solid var(--border); border-radius: 6px; margin: 0; padding: 8px 10px 10px; background: var(--bg); }
-/* Player dropdown fills the row with IP beside it; a guest's name box sits
-   on its own line underneath so it never squeezes the name. */
-.seat { display: grid; grid-template-columns: minmax(7.5em, 1fr) auto; gap: 6px; align-items: center; margin: 4px 0; }
-.seat select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-.seat .guest-name { grid-column: 1 / -1; width: 100%; }
-.seat.tm-seat { grid-template-columns: minmax(5em, 1fr) auto auto; }
-.ip-input, .score-input { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; font-weight: 600; }
-.ip-input input { width: 4.2em; }
-.score-input { margin-top: 6px; font-size: 1rem; }
-.score-input input { width: 4.6em; font-weight: 700; font-size: 1.1rem; }
 ul.problems { margin: 8px 0 0; padding-left: 20px; color: #9b1c1c; font-size: 0.9rem; }
 .sticky-actions {
   position: sticky;
@@ -277,9 +260,63 @@ ul.problems { margin: 8px 0 0; padding-left: 20px; color: #9b1c1c; font-size: 0.
 .round-pills button { min-width: 2.6em; }
 .round-pills button.done { background: #d8ead9; }
 .round-pills button[aria-pressed="true"] { background: var(--header); color: var(--cat-yellow); border-color: var(--header); font-weight: 700; }
-.seat-name { flex: 1 1 6em; font-weight: 600; }
 button.link { border: 0; background: none; padding: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 table.schedule td { text-align: left; }
 ol.finals-groups { margin: 6px 0; padding-left: 20px; }
 .players-table tr.former input { color: var(--muted); background: var(--bg); }
 table.matrix td.mirror { background: transparent; }
+
+/* ---------- Game tables (history and input) ---------- */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+table.history th, table.history td,
+table.grid-input th, table.grid-input td { text-align: left; padding: 5px 8px; }
+table.history thead th, table.grid-input thead th { padding: 8px; }
+table.history .ip-cell { text-align: center; color: #7a1a1a; font-weight: 600; }
+table.history .score-cell, table.grid-input .score-cell { text-align: center; font-weight: 700; background: rgba(57, 60, 65, 0.06); }
+table.history td.won { font-weight: 700; }
+table.history .score-cell.won { color: #1d6b34; }
+table.history .date-cell { vertical-align: top; white-space: nowrap; background: var(--surface); position: static; box-shadow: none; }
+table.history tr.night-start > * { border-top: 2px solid var(--header); }
+table.history .notes-cell { font-size: 0.82rem; color: var(--muted); }
+table.history .date-cell .badge { margin: 4px 0 0; }
+table.grid-input tbody th { position: static; box-shadow: none; }
+table.grid-input .pick-cell select { width: 7.5em; }
+table.grid-input .pick-cell .guest-name { display: block; width: 7.5em; margin-top: 4px; font-size: 0.85rem; }
+table.grid-input input.num { width: 3.4em; }
+table.grid-input input.num.score { width: 3.8em; font-weight: 700; }
+table.grid-input .row-actions { white-space: nowrap; }
+table.grid-input .row-actions button { padding: 3px 7px; }
+table.grid-input tr.has-problems > * { background: #f8e3e3; }
+table.grid-input tr.problem-row td { color: #9b1c1c; font-size: 0.85rem; white-space: normal; background: #f8e3e3; }
+.new-dot { color: #b8860b; margin-left: 2px; }
+
+/* ---------- Tournament mode: current round cards ---------- */
+.status { font-size: 0.8rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.status.saved { background: #d8ead9; color: #1d5a2c; }
+.status.unsaved { background: #fff4c7; color: #7a5a00; }
+.round-nav { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
+.round-nav button { font-size: 1.3rem; padding: 6px 16px; }
+.round-title { flex: 1; text-align: center; display: flex; flex-direction: column; font-size: 1.2rem; }
+.round-title .muted { font-size: 0.85rem; }
+ol.round-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.round-card { background: var(--surface); border: 2px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 1.1rem; }
+.round-card.has-problems { border-color: #c0392b; }
+.round-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.round-card-head .table-no { font-size: 1.3rem; font-weight: 800; }
+.round-card-head button { font-size: 1rem; padding: 8px 16px; }
+.card-teams { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; }
+.card-vs { align-self: center; font-weight: 800; color: var(--muted); }
+.card-team { background: var(--bg); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+.card-player { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; }
+.card-name { font-weight: 700; font-size: 1.2rem; }
+.card-player label, .card-score label { display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; color: var(--muted); }
+.round-card input.num { width: 3.6em; height: 2.4em; font-size: 1.1rem; text-align: center; }
+.card-score { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; border-top: 1px solid var(--border); padding-top: 8px; }
+.round-card input.num.score { width: 3.4em; height: 2.2em; font-size: 1.7rem; font-weight: 800; }
+@media (max-width: 640px) {
+  .card-teams { grid-template-columns: 1fr; }
+  .card-vs { justify-self: center; }
+}
+/* All-games table */
+table.tm-grid .name-cell { font-weight: 600; }
+table.tm-grid input.num { width: 3.2em; }

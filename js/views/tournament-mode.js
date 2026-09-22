@@ -23,8 +23,8 @@ const state = {
   screen: null, // 'list' | 'setup' | 'run'
   tournamentId: null,
   setup: { date: today(), players: new Set(), preview: null, seed: null },
-  phase: 'prelim',
-  round: 1,
+  roundRef: null, // 'prelim-3' etc.; null = first round with unsaved tables
+  runView: 'round', // 'round' (large cards) | 'table' (every game)
   drafts: new Map(), // slot key -> unsaved inputs
   message: null,
   busy: false,
@@ -131,8 +131,7 @@ function renderList({ el, league, readOnly, banner, ...ctx }, appRun) {
     btn.addEventListener('click', () => {
       state.screen = 'run';
       state.tournamentId = Number(btn.dataset.open);
-      state.phase = 'prelim';
-      state.round = 1;
+      state.roundRef = null;
       rerenderFn({ el, league, ...ctx })();
     });
   }
@@ -223,8 +222,7 @@ function renderSetup(ctx) {
       }));
       state.screen = 'run';
       state.tournamentId = id;
-      state.phase = 'prelim';
-      state.round = 1;
+      state.roundRef = null;
       return `${season.name} Tournament started. Good luck!`;
     })
   );
@@ -240,50 +238,116 @@ function scheduleTable(league, rounds) {
 
 // ---------------------------------------------------------------- run
 
+// Every scheduled table in play order: prelim rounds, then finals.
+function allSlots(schedule) {
+  const out = [];
+  const add = (phase, rounds) =>
+    rounds.forEach((r, ri) =>
+      r.tables.forEach((table, ti) => {
+        const seq = seqFor(schedule, phase, ri + 1, ti);
+        out.push({ phase, round: ri + 1, tableIdx: ti, seq, table, sitting: r.sitting, key: slotKey(phase, ri + 1, seq), ref: `${phase}-${ri + 1}` });
+      })
+    );
+  add('prelim', schedule.prelim.rounds);
+  if (schedule.finals) add('final', schedule.finals.rounds);
+  return out;
+}
+
+const roundLabel = (slot) => `${slot.phase === 'final' ? 'Finals' : 'Prelims'} round ${slot.round}`;
+
 function renderRun(ctx, t) {
   const { el, league, readOnly, banner } = ctx;
   const schedule = t.schedule;
   const p = progress(league, t);
   const saved = new Map(p.games.map((g) => [slotKey(g.tournament_phase, g.tournament_round, g.seq), g]));
-  if (state.phase === 'final' && !schedule.finals) state.phase = 'prelim';
-  const phaseRounds = state.phase === 'final' ? schedule.finals.rounds : schedule.prelim.rounds;
-  state.round = Math.min(Math.max(state.round, 1), phaseRounds.length);
-  const round = phaseRounds[state.round - 1];
-  const roundDone = (phase, r, rounds) => rounds[r - 1].tables.every((_, i) => saved.has(slotKey(phase, r, seqFor(schedule, phase, r, i))));
+  const slots = allSlots(schedule);
+  const slotByKey = new Map(slots.map((sl) => [sl.key, sl]));
+  const rounds = [...new Set(slots.map((sl) => sl.ref))].map((ref) => slots.filter((sl) => sl.ref === ref));
+  const roundDone = (round) => round.every((sl) => saved.has(sl.key));
+  if (!rounds.some((r) => r[0].ref === state.roundRef)) state.roundRef = null;
+  const current = rounds.find((r) => r[0].ref === state.roundRef) ?? rounds.find((r) => !roundDone(r)) ?? rounds[rounds.length - 1];
+  const currentIdx = rounds.indexOf(current);
   const rows = standings(p.games);
   const finalsStarted = p.games.some((g) => g.tournament_phase === 'final');
+  const draftOf = (sl) => state.drafts.get(sl.key) ?? fromGame(saved.get(sl.key), sl.table);
+  const name = (id) => esc(playerName(league, id));
+  const dirtyValid = slots.filter((sl) => state.drafts.has(sl.key) && !tableProblems(state.drafts.get(sl.key)).length);
 
-  const tableCard = (table, i) => {
-    const seq = seqFor(schedule, state.phase, state.round, i);
-    const key = slotKey(state.phase, state.round, seq);
-    const game = saved.get(key);
-    const draft = state.drafts.get(key) ?? fromGame(game, table);
-    const problems = tableProblems(draft);
-    const seatRow = (team, idx, id) => {
-      const s = draft.seats[team][idx];
-      return `<div class="seat tm-seat"><span class="seat-name">${esc(playerName(league, id))}</span>
-        <label class="ip-input" title="Hands won alone">Alone <input type="number" min="0" max="20" data-slot="${key}" data-team="${team}" data-idx="${idx}" data-field="alone_wins" value="${s.alone_wins}"></label>
-        <label class="ip-input" title="Idiot points">IP <input type="number" min="0" max="20" data-slot="${key}" data-team="${team}" data-idx="${idx}" data-field="idiot_points" value="${s.idiot_points}"></label>
-      </div>`;
-    };
-    const teamBlock = (team, ids) => `<fieldset class="team-input" aria-label="${ids.map((id) => esc(playerName(league, id))).join(' and ')}">
-      ${ids.map((id, idx) => seatRow(team, idx, id)).join('')}
-      <div class="inline-form">
-        <label class="score-input">Score <input type="number" min="0" max="13" data-slot="${key}" data-field="points_${team}" value="${draft[`points_${team}`]}"></label>
-        <label class="ip-input" title="Sets (euchres) this team got">Sets <input type="number" min="0" max="20" data-slot="${key}" data-field="sets_${team}" value="${draft[`sets_${team}`]}"></label>
+  // Inputs shared by both views.
+  const numInput = (sl, field, value, label, max, team, idx, cls = '') =>
+    `<input type="number" class="num ${cls}" min="0" max="${max}" data-slot="${sl.key}" data-field="${field}"${
+      team ? ` data-team="${team}" data-idx="${idx}"` : ''} value="${value}" aria-label="${esc(label)}" ${readOnly ? 'disabled' : ''}>`;
+  const status = (sl) =>
+    state.drafts.has(sl.key) ? '<span class="status unsaved">unsaved</span>' : saved.has(sl.key) ? '<span class="status saved">✓ saved</span>' : '';
+  const buttons = (sl) => {
+    const canSave = !readOnly && !state.busy && state.drafts.has(sl.key) && !tableProblems(draftOf(sl)).length;
+    return `${saved.has(sl.key) ? `<button type="button" data-clear="${sl.key}" ${readOnly ? 'disabled' : ''}>Clear</button>` : ''}
+      <button type="button" class="primary" data-save="${sl.key}" ${canSave ? '' : 'disabled'}>Save</button>`;
+  };
+  const teamNames = (ids) => ids.map((id) => playerName(league, id)).join(' and ');
+
+  // ---- Current round: large cards, one per table
+  const card = (sl) => {
+    const d = draftOf(sl);
+    const problems = state.drafts.has(sl.key) ? tableProblems(d) : [];
+    const team = (tk, ids) => `<div class="card-team">
+      ${ids.map((id, idx) => `<div class="card-player">
+        <span class="card-name">${name(id)}</span>
+        <label>Alone ${numInput(sl, 'alone_wins', d.seats[tk][idx].alone_wins, `${playerName(league, id)} alone wins`, 20, tk, idx)}</label>
+        <label>IP ${numInput(sl, 'idiot_points', d.seats[tk][idx].idiot_points, `${playerName(league, id)} idiot points`, 20, tk, idx)}</label>
+      </div>`).join('')}
+      <div class="card-score">
+        <label>Score ${numInput(sl, `points_${tk}`, d[`points_${tk}`], `${teamNames(ids)} score`, 13, null, null, 'score')}</label>
+        <label>Sets ${numInput(sl, `sets_${tk}`, d[`sets_${tk}`], `${teamNames(ids)} sets`, 20)}</label>
       </div>
-    </fieldset>`;
-    return `<li class="game-input ${problems.length && state.drafts.has(key) ? 'has-problems' : ''}">
-      <div class="game-input-head"><strong>Table ${i + 1}</strong>
-        ${game ? '<span class="badge">saved</span>' : ''}${state.drafts.has(key) ? ' <span class="muted">unsaved changes</span>' : ''}
-        <span class="spacer"></span>
-        ${game ? `<button type="button" data-clear="${key}" ${readOnly ? 'disabled' : ''}>Clear</button>` : ''}
-        <button type="button" class="primary" data-save="${key}" data-table="${i}" ${readOnly || problems.length || state.busy || (game && !state.drafts.has(key)) ? 'disabled' : ''}>${game ? 'Save changes' : 'Save'}</button>
-      </div>
-      <div class="teams-input">${teamBlock('A', table[0])}${teamBlock('B', table[1])}</div>
-      ${problems.length && state.drafts.has(key) ? `<ul class="problems">${problems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    </div>`;
+    return `<li class="round-card ${problems.length ? 'has-problems' : ''}">
+      <div class="round-card-head"><span class="table-no">Table ${sl.tableIdx + 1}</span>${status(sl)}<span class="spacer"></span>${buttons(sl)}</div>
+      <div class="card-teams">${team('A', sl.table[0])}<div class="card-vs">vs</div>${team('B', sl.table[1])}</div>
+      ${problems.length ? `<ul class="problems">${problems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
     </li>`;
   };
+  const roundView = `
+    <div class="round-nav">
+      <button type="button" data-nav="-1" ${currentIdx === 0 ? 'disabled' : ''} aria-label="Previous round">←</button>
+      <div class="round-title"><strong>${roundLabel(current[0])}</strong>
+        <span class="muted">${current.filter((sl) => saved.has(sl.key)).length}/${current.length} tables saved</span></div>
+      <button type="button" data-nav="1" ${currentIdx === rounds.length - 1 ? 'disabled' : ''} aria-label="Next round">→</button>
+    </div>
+    <div class="round-pills" role="group" aria-label="Jump to round">
+      ${rounds.map((r) => `<button type="button" data-ref="${r[0].ref}" aria-pressed="${r === current}" class="${roundDone(r) ? 'done' : ''}">${r[0].phase === 'final' ? 'F' : ''}${r[0].round}${roundDone(r) ? ' ✓' : ''}</button>`).join('')}
+    </div>
+    ${current[0].sitting.length ? `<p class="muted">Sitting out: ${current[0].sitting.map(name).join(', ')}</p>` : ''}
+    <ol class="round-cards">${current.map(card).join('')}</ol>`;
+
+  // ---- All games: one editable row per scheduled table
+  const teamHeader = (tk) => [1, 2].map((i) => `<th scope="col">${tk}${i}</th><th scope="col" title="Alone wins">Alone</th><th scope="col" title="Idiot points">IP</th>`).join('');
+  const tableRow = (sl, first) => {
+    const d = draftOf(sl);
+    const problems = state.drafts.has(sl.key) ? tableProblems(d) : [];
+    const where = `${roundLabel(sl)} table ${sl.tableIdx + 1}`;
+    const teamCells = (tk, ids) => ids.map((id, idx) => `<td class="name-cell">${name(id)}</td>
+      <td>${numInput(sl, 'alone_wins', d.seats[tk][idx].alone_wins, `${where} ${playerName(league, id)} alone wins`, 20, tk, idx)}</td>
+      <td>${numInput(sl, 'idiot_points', d.seats[tk][idx].idiot_points, `${where} ${playerName(league, id)} idiot points`, 20, tk, idx)}</td>`).join('');
+    const scoreCells = (tk) => `<td class="score-cell">${numInput(sl, `points_${tk}`, d[`points_${tk}`], `${where} team ${tk} score`, 13, null, null, 'score')}</td>
+      <td>${numInput(sl, `sets_${tk}`, d[`sets_${tk}`], `${where} team ${tk} sets`, 20)}</td>`;
+    return `<tr class="${first ? 'night-start' : ''} ${problems.length ? 'has-problems' : ''}">
+      <th scope="row">${first ? (sl.phase === 'final' ? 'Finals R' : 'Prelims R') + sl.round : ''}</th>
+      <td>${sl.tableIdx + 1}</td>
+      ${teamCells('A', sl.table[0])}${scoreCells('A')}${scoreCells('B')}${teamCells('B', sl.table[1])}
+      <td class="row-actions">${status(sl)} ${buttons(sl)}</td>
+    </tr>
+    ${problems.length ? `<tr class="problem-row"><td colspan="19">${esc(where)}: ${problems.map(esc).join(' ')}</td></tr>` : ''}`;
+  };
+  const tableView = `
+    <div class="table-wrap"><table class="stats grid-input tm-grid">
+      <thead><tr><th scope="col">Round</th><th scope="col">Tbl</th>${teamHeader('A')}<th scope="col">A</th><th scope="col" title="Team A sets">Sets</th><th scope="col">B</th><th scope="col" title="Team B sets">Sets</th>${teamHeader('B')}<th scope="col"><span class="visually-hidden">Save</span></th></tr></thead>
+      <tbody>${rounds.map((r) => r.map((sl, i) => tableRow(sl, i === 0)).join('')).join('')}</tbody>
+    </table></div>
+    <div class="inline-form">
+      <button type="button" class="primary" id="tm-save-all" ${readOnly || state.busy || !dirtyValid.length ? 'disabled' : ''}>Save all changes${dirtyValid.length ? ` (${dirtyValid.length})` : ''}</button>
+      ${state.drafts.size ? '<button type="button" id="tm-discard">Discard changes</button>' : ''}
+    </div>`;
 
   const champion = p.complete ? rows[0] : null;
   el.innerHTML = `
@@ -291,25 +355,19 @@ function renderRun(ctx, t) {
     <div class="toolbar">
       <button type="button" id="tm-back">← All tournaments</button>
       <strong>${esc(tournamentTitle(league, t))}</strong>
-      <span class="muted">${formatDate(t.held_on)} · ${schedule.players.length} players</span>
+      <span class="muted">${formatDate(t.held_on)} · ${schedule.players.length} players · prelims ${p.prelimDone}/${p.prelimSlots}${schedule.finals ? ` · finals ${p.finalDone}/${p.finalSlots}` : ''}</span>
       <span class="spacer"></span>
       <button type="button" id="tm-refresh" title="Load results saved from other phones">Refresh</button>
     </div>
-    ${champion ? `<div class="stat-cards"><div class="stat-card champion"><div class="label">Champion</div><div class="value">🏆 ${esc(playerName(league, champion.key))}</div><div class="sub">${champion.total} points · full results on the Tournament Results tab</div></div></div>` : ''}
-
+    ${champion ? `<div class="stat-cards"><div class="stat-card champion"><div class="label">Champion</div><div class="value">🏆 ${name(champion.key)}</div><div class="sub">${champion.total} points · full results on the Tournament Results tab</div></div></div>` : ''}
     <div class="toolbar">
-      <div class="segmented" role="group" aria-label="Phase">
-        <button type="button" data-phase="prelim" aria-pressed="${state.phase === 'prelim'}">Prelims (${p.prelimDone}/${p.prelimSlots})</button>
-        <button type="button" data-phase="final" aria-pressed="${state.phase === 'final'}" ${schedule.finals ? '' : 'disabled'}>Finals${schedule.finals ? ` (${p.finalDone}/${p.finalSlots})` : ''}</button>
+      <div class="segmented" role="group" aria-label="View">
+        <button type="button" data-view="round" aria-pressed="${state.runView === 'round'}">Current round</button>
+        <button type="button" data-view="table" aria-pressed="${state.runView === 'table'}">All games</button>
       </div>
     </div>
-    <div class="round-pills" role="group" aria-label="Round">
-      ${phaseRounds.map((_, i) => `<button type="button" data-round="${i + 1}" aria-pressed="${state.round === i + 1}" class="${roundDone(state.phase, i + 1, phaseRounds) ? 'done' : ''}">${i + 1}${roundDone(state.phase, i + 1, phaseRounds) ? ' ✓' : ''}</button>`).join('')}
-    </div>
 
-    <h3>${state.phase === 'final' ? 'Finals' : 'Prelims'} round ${state.round}</h3>
-    ${round.sitting.length ? `<p class="muted">Sitting out: ${round.sitting.map((id) => esc(playerName(league, id))).join(', ')}</p>` : ''}
-    <ol class="game-inputs">${round.tables.map(tableCard).join('')}</ol>
+    ${state.runView === 'table' ? tableView : roundView}
 
     ${p.prelimComplete && !finalsStarted ? `<section class="panel">
       <h3>${schedule.finals ? 'Finals tables' : 'Prelims complete'}</h3>
@@ -322,7 +380,7 @@ function renderRun(ctx, t) {
       <h3>Standings</h3>
       <div class="table-wrap"><table class="stats compact">
         <thead><tr><th scope="col">#</th><th scope="col" class="name-col">Player</th><th scope="col">Total</th><th scope="col">W–L</th><th scope="col">Points</th><th scope="col">Sets</th><th scope="col">Alone</th><th scope="col">IP</th></tr></thead>
-        <tbody>${rows.length ? rows.map((r) => `<tr><td>${r.place}</td><th scope="row">${esc(playerName(league, r.key))}</th><td><strong>${r.total}</strong></td><td>${r.wins}–${r.losses}</td><td>${r.gamePoints}</td><td>${r.sets}</td><td>${r.aloneWins}</td><td>${r.idiotPoints}</td></tr>`).join('') : '<tr><td colspan="8" class="muted">No results saved yet.</td></tr>'}</tbody>
+        <tbody>${rows.length ? rows.map((r) => `<tr><td>${r.place}</td><th scope="row">${name(r.key)}</th><td><strong>${r.total}</strong></td><td>${r.wins}–${r.losses}</td><td>${r.gamePoints}</td><td>${r.sets}</td><td>${r.aloneWins}</td><td>${r.idiotPoints}</td></tr>`).join('') : '<tr><td colspan="8" class="muted">No results saved yet.</td></tr>'}</tbody>
       </table></div>
     </section>
 
@@ -334,75 +392,93 @@ function renderRun(ctx, t) {
     </details>`;
 
   const rerender = rerenderFn(ctx);
+  const saveSlot = async (sl) => {
+    const d = draftOf(sl);
+    check(await supabase.rpc('save_tournament_game', {
+      p_tournament_id: t.id,
+      p_game: {
+        phase: sl.phase,
+        round: sl.round,
+        seq: sl.seq,
+        team_a_points: d.points_A,
+        team_b_points: d.points_B,
+        team_a_sets: d.sets_A,
+        team_b_sets: d.sets_B,
+        players: ['A', 'B'].flatMap((tk, ti) => sl.table[ti].map((id, idx) => ({
+          team: tk, seat: idx + 1, player_id: id,
+          idiot_points: d.seats[tk][idx].idiot_points,
+          alone_wins: d.seats[tk][idx].alone_wins,
+        }))),
+      },
+    }));
+    state.drafts.delete(sl.key);
+  };
+
   el.querySelector('#tm-back').addEventListener('click', () => {
     state.screen = 'list';
     rerender();
   });
   el.querySelector('#tm-refresh').addEventListener('click', () => ctx.reload());
-  for (const btn of el.querySelectorAll('[data-phase]')) {
+  for (const btn of el.querySelectorAll('[data-view]')) {
     btn.addEventListener('click', () => {
-      state.phase = btn.dataset.phase;
-      state.round = 1;
+      state.runView = btn.dataset.view;
       rerender();
     });
   }
-  for (const btn of el.querySelectorAll('[data-round]')) {
+  for (const btn of el.querySelectorAll('[data-nav]')) {
     btn.addEventListener('click', () => {
-      state.round = Number(btn.dataset.round);
+      state.roundRef = rounds[currentIdx + Number(btn.dataset.nav)][0].ref;
+      rerender();
+    });
+  }
+  for (const btn of el.querySelectorAll('[data-ref]')) {
+    btn.addEventListener('click', () => {
+      state.roundRef = btn.dataset.ref;
       rerender();
     });
   }
   for (const input of el.querySelectorAll('input[data-slot]')) {
     input.addEventListener('change', () => {
-      const key = input.dataset.slot;
-      const [phase, r, seq] = key.split('-');
-      const tableIdx = round.tables.findIndex((_, i) => seqFor(schedule, phase, Number(r), i) === Number(seq));
-      const draft = state.drafts.get(key) ?? fromGame(saved.get(key), round.tables[tableIdx]);
+      const sl = slotByKey.get(input.dataset.slot);
+      const draft = draftOf(sl);
       const value = input.value === '' ? '' : Number(input.value);
       if (input.dataset.team) draft.seats[input.dataset.team][Number(input.dataset.idx)][input.dataset.field] = value === '' ? 0 : value;
       else draft[input.dataset.field] = value;
-      state.drafts.set(key, draft);
+      state.drafts.set(sl.key, draft);
       rerender();
     });
   }
   for (const btn of el.querySelectorAll('[data-save]')) {
     btn.addEventListener('click', () => {
-      const key = btn.dataset.save;
-      const i = Number(btn.dataset.table);
-      const table = round.tables[i];
-      const draft = state.drafts.get(key) ?? fromGame(saved.get(key), table);
+      const sl = slotByKey.get(btn.dataset.save);
       act(ctx, async () => {
-        check(await supabase.rpc('save_tournament_game', {
-          p_tournament_id: t.id,
-          p_game: {
-            phase: state.phase,
-            round: state.round,
-            seq: seqFor(schedule, state.phase, state.round, i),
-            team_a_points: draft.points_A,
-            team_b_points: draft.points_B,
-            team_a_sets: draft.sets_A,
-            team_b_sets: draft.sets_B,
-            players: ['A', 'B'].flatMap((team, ti) => table[ti].map((id, idx) => ({
-              team, seat: idx + 1, player_id: id,
-              idiot_points: draft.seats[team][idx].idiot_points,
-              alone_wins: draft.seats[team][idx].alone_wins,
-            }))),
-          },
-        }));
-        state.drafts.delete(key);
-        return `Saved table ${i + 1}, round ${state.round}.`;
+        await saveSlot(sl);
+        // Finishing the round being viewed moves on to the next unfinished one.
+        const round = rounds.find((r) => r[0].ref === sl.ref);
+        if (state.runView === 'round' && round.every((x) => x === sl || saved.has(x.key))) state.roundRef = null;
+        return `Saved ${roundLabel(sl)}, table ${sl.tableIdx + 1}.`;
       });
     });
   }
+  el.querySelector('#tm-save-all')?.addEventListener('click', () =>
+    act(ctx, async () => {
+      for (const sl of dirtyValid) await saveSlot(sl);
+      return `Saved ${dirtyValid.length} game${dirtyValid.length === 1 ? '' : 's'}.`;
+    })
+  );
+  el.querySelector('#tm-discard')?.addEventListener('click', () => {
+    if (!confirm('Discard all unsaved changes?')) return;
+    state.drafts.clear();
+    rerender();
+  });
   for (const btn of el.querySelectorAll('[data-clear]')) {
     btn.addEventListener('click', () => {
       if (!confirm('Clear this table’s saved result?')) return;
-      const key = btn.dataset.clear;
-      const [phase, r, seq] = key.split('-');
+      const sl = slotByKey.get(btn.dataset.clear);
       act(ctx, async () => {
-        check(await supabase.rpc('clear_tournament_game', { p_tournament_id: t.id, p_phase: phase, p_round: Number(r), p_seq: Number(seq) }));
-        state.drafts.delete(key);
-        return 'Result cleared.';
+        check(await supabase.rpc('clear_tournament_game', { p_tournament_id: t.id, p_phase: sl.phase, p_round: sl.round, p_seq: sl.seq }));
+        state.drafts.delete(sl.key);
+        return `Cleared ${roundLabel(sl)}, table ${sl.tableIdx + 1}.`;
       });
     });
   }
@@ -410,8 +486,7 @@ function renderRun(ctx, t) {
     act(ctx, async () => {
       const ranked = prelimStandings(p.games).map((r) => r.key);
       check(await supabase.from('tournaments').update({ schedule: { ...schedule, finals: finalsSchedule(ranked) } }).eq('id', t.id));
-      state.phase = 'final';
-      state.round = 1;
+      state.roundRef = 'final-1';
       return 'Finals tables set from the prelim standings.';
     })
   );

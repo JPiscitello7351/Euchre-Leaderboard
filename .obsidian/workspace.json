@@ -190,6 +190,7 @@
   },
   "active": "39ed77da2952e9df",
   "lastOpenFiles": [
+    "js/views/history.js.tmp.3408.7e6eff55f0d8",
     "css/sedHG92jq",
     "css/sedPA2apn",
     "js/members.js",
@@ -200,7 +201,6 @@
     "js/sedQnw7Ri",
     "js/views/tournament-mode.js",
     "supabase/003_tournament_mode.sql",
-    "supabase/003_tournament_mode.sql.tmp.3408.724da0f9fd3d",
     "README.md"
   ]
 }
