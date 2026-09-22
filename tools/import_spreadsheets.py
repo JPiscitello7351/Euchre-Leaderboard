@@ -190,6 +190,36 @@ def attach_tournament(games, held_on, path, problems):
             game[f"team_{team.lower()}_sets"] = max(team_sets) if team_sets else 0
 
 
+def schedule_from_games(games):
+    """Rebuild a Tournament Mode schedule from a tournament's saved games, so
+    past tournaments can be viewed and edited there. Games must be in play
+    order; team A is listed first at each table."""
+    def team(g, side):
+        return [p["player_id"] for p in sorted(g["players"], key=lambda p: p["seat"]) if p["team"] == side]
+
+    players = sorted({p["player_id"] for g in games for p in g["players"]})
+
+    def rounds(phase):
+        out = []
+        phase_games = [g for g in games if g["tournament_phase"] == phase]
+        for rnd in sorted({g["tournament_round"] for g in phase_games}):
+            tables = [[team(g, "A"), team(g, "B")] for g in phase_games if g["tournament_round"] == rnd]
+            playing = {pid for t in tables for side in t for pid in side}
+            out.append({"tables": tables, "sitting": [pid for pid in players if pid not in playing]})
+        return out
+
+    prelim = rounds("prelim")
+    finals = rounds("final")
+    return {
+        "version": 1,
+        "seed": None,
+        "players": players,
+        "prelim": {"rounds": prelim},
+        # Finals groups: the players at each finals table, top table first.
+        "finals": {"groups": [t[0] + t[1] for t in finals[0]["tables"]], "rounds": finals} if finals else None,
+    }
+
+
 def build(folder):
     folder = Path(folder)
     problems = []
@@ -271,6 +301,11 @@ def build(folder):
                 for s in g["seats"]
             ],
         })
+
+    for t in tournaments:
+        t_games = sorted((g for g in games_out if g["tournament_id"] == t["id"]), key=lambda g: g["seq"])
+        if t_games:
+            t["schedule"] = schedule_from_games(t_games)
 
     backup = {
         "kind": "euchre-league-backup",

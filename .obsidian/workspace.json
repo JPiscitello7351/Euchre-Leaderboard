@@ -190,6 +190,9 @@
   },
   "active": "39ed77da2952e9df",
   "lastOpenFiles": [
+    "local/backup-2026-09-22-before-demo.json",
+    "tools/__pycache__/import_spreadsheets.cpython-311.pyc",
+    "tools/__pycache__",
     "js/views/history.js.tmp.3408.7e6eff55f0d8",
     "css/sedHG92jq",
     "css/sedPA2apn",
@@ -198,9 +201,6 @@
     "supabase/004_membership_dates.sql",
     "supabase/004_membership_dates.sql.tmp.3408.c65a028f056c",
     "local/tm-test.json",
-    "js/sedQnw7Ri",
-    "js/views/tournament-mode.js",
-    "supabase/003_tournament_mode.sql",
     "README.md"
   ]
 }
