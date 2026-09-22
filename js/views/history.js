@@ -69,7 +69,7 @@ export function render(el, league) {
     ${games.length === 0 ? '<p class="placeholder">No games match.</p>' : `
     <div class="table-wrap"><table class="stats history">
       <thead><tr>
-        <th scope="col">Date</th><th scope="col">#</th>${header('A')}<th scope="col" class="c">A</th><th scope="col" class="c">B</th>${header('B')}<th scope="col">Notes</th>
+        <th scope="col">Date</th><th scope="col">#</th>${header('A')}<th scope="col" class="c score-h">A Score</th><th scope="col" class="c score-h">B Score</th>${header('B')}<th scope="col">Notes</th>
       </tr></thead>
       <tbody>
         ${nights.map(([day, dayGames]) => dayGames.map((g, i) => {

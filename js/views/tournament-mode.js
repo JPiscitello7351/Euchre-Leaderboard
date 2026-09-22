@@ -345,8 +345,12 @@ function renderRun(ctx, t) {
     const teamCells = (tk, ids) => ids.map((id, idx) => `<td class="name-cell">${name(id)}</td>
       <td>${numInput(sl, 'alone_wins', d.seats[tk][idx].alone_wins, `${where} ${playerName(league, id)} alone wins`, 20, tk, idx)}</td>
       <td>${numInput(sl, 'idiot_points', d.seats[tk][idx].idiot_points, `${where} ${playerName(league, id)} idiot points`, 20, tk, idx)}</td>`).join('');
-    const scoreCells = (tk) => `<td class="score-cell">${numInput(sl, `points_${tk}`, d[`points_${tk}`], `${where} team ${tk} score`, 13, null, null, 'score')}</td>
-      <td>${numInput(sl, `sets_${tk}`, d[`sets_${tk}`], `${where} team ${tk} sets`, 20)}</td>`;
+    // A Sets | A Score | B Score | B Sets
+    const scoreCells = (tk) => {
+      const score = `<td class="score-cell">${numInput(sl, `points_${tk}`, d[`points_${tk}`], `${where} team ${tk} score`, 13, null, null, 'score')}</td>`;
+      const sets = `<td class="sets-cell">${numInput(sl, `sets_${tk}`, d[`sets_${tk}`], `${where} team ${tk} sets`, 20)}</td>`;
+      return tk === 'A' ? sets + score : score + sets;
+    };
     return `<tr class="${first ? 'night-start' : ''} ${problems.length ? 'has-problems' : ''}">
       <th scope="row">${first ? (sl.phase === 'final' ? 'Finals R' : 'Prelims R') + sl.round : ''}</th>
       <td>${sl.tableIdx + 1}</td>
@@ -357,7 +361,7 @@ function renderRun(ctx, t) {
   };
   const tableView = `
     <div class="table-wrap"><table class="stats grid-input tm-grid">
-      <thead><tr><th scope="col">Round</th><th scope="col">Tbl</th>${teamHeader('A')}<th scope="col" class="c">A</th><th scope="col" title="Team A sets">Sets</th><th scope="col" class="c">B</th><th scope="col" title="Team B sets">Sets</th>${teamHeader('B')}<th scope="col"><span class="visually-hidden">Save</span></th></tr></thead>
+      <thead><tr><th scope="col">Round</th><th scope="col">Tbl</th>${teamHeader('A')}<th scope="col" class="c score-h" title="Sets (euchres) team A got">A Sets</th><th scope="col" class="c score-h">A Score</th><th scope="col" class="c score-h">B Score</th><th scope="col" class="c score-h" title="Sets (euchres) team B got">B Sets</th>${teamHeader('B')}<th scope="col"><span class="visually-hidden">Save</span></th></tr></thead>
       <tbody>${rounds.map((r) => r.map((sl, i) => tableRow(sl, i === 0)).join('')).join('')}</tbody>
     </table></div>
     <div class="inline-form">

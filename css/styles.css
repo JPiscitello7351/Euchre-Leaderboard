@@ -53,6 +53,8 @@ body {
   border-radius: 6px 6px 0 0;
   white-space: nowrap;
 }
+/* Data-entry tabs are pushed to the far right when the menu fits. */
+.tabs a.first-admin { margin-left: auto; }
 .tabs a:hover { color: var(--cat-yellow); }
 .tabs a:focus-visible { outline: 2px solid var(--cat-yellow); outline-offset: -2px; }
 .tabs a[aria-selected="true"] {
@@ -325,9 +327,92 @@ table.tm-grid input.num { width: 3.2em; }
 body.tm-focus .site-header, body.tm-focus main > h2 { display: none; }
 body.tm-focus main { max-width: none; padding: 10px 12px; }
 .focus-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-body.tm-focus ol.round-cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+/* The page fills the screen; the cards take the space under the round
+   controls and sit in its middle (or scroll from the top if taller). */
+body.tm-focus main { min-height: 100vh; display: flex; flex-direction: column; }
+body.tm-focus .view-body { flex: 1; display: flex; flex-direction: column; }
+body.tm-focus ol.round-cards {
+  flex: 1;
+  align-content: safe center;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 20px;
+  padding-bottom: 10px;
+}
+/* Bigger cards with the two teams stacked. */
+body.tm-focus .round-card { font-size: 1.3rem; padding: 12px 16px; border-width: 3px; }
+body.tm-focus .round-card-head .table-no { font-size: 1.7rem; }
+body.tm-focus .round-card-head button { font-size: 1.15rem; padding: 10px 20px; }
+body.tm-focus .card-teams { grid-template-columns: 1fr; gap: 4px; }
+body.tm-focus .round-card-head { margin-bottom: 8px; }
+body.tm-focus .round-card-head .table-no { white-space: nowrap; }
+body.tm-focus .card-vs { justify-self: center; font-size: 1.2rem; }
+body.tm-focus .card-team { padding: 10px 14px; gap: 8px; }
+body.tm-focus .card-player { min-width: 0; }
+body.tm-focus .card-name { min-width: 0; overflow-wrap: anywhere; }
+body.tm-focus .card-name { font-size: 1.6rem; }
+body.tm-focus .card-player label, body.tm-focus .card-score label { font-size: 1.05rem; }
+body.tm-focus .round-card input.num { width: 3.6em; height: 2.2em; font-size: 1.35rem; }
+body.tm-focus .round-card input.num.score { width: 3em; height: 1.7em; font-size: 2.4rem; }
 
 /* Column headers over centred numbers */
 table.stats thead th.c { text-align: center; }
 table.stats td.c { text-align: center; }
 table.results-games tbody th { position: static; box-shadow: none; white-space: nowrap; }
+/* Phones: fullscreen cards shrink just enough to fit the width. */
+@media (max-width: 560px) {
+  body.tm-focus .round-card { font-size: 1.1rem; padding: 10px 10px; }
+  body.tm-focus .card-team { padding: 8px 10px; }
+  body.tm-focus .card-name { font-size: 1.3rem; }
+  body.tm-focus .card-player { gap: 6px; }
+  body.tm-focus .card-player label, body.tm-focus .card-score label { font-size: 0.85rem; gap: 4px; }
+  body.tm-focus .round-card input.num { width: 2.9em; font-size: 1.2rem; }
+  body.tm-focus .round-card input.num.score { width: 2.6em; font-size: 2rem; }
+  body.tm-focus .round-card-head .table-no { font-size: 1.4rem; }
+  body.tm-focus .round-card-head button { font-size: 1rem; padding: 8px 14px; }
+}
+
+/* Game Input on phones: each game becomes a block with team A stacked
+   above team B, so nothing scrolls sideways. */
+@media (max-width: 700px) {
+  table.grid-input:not(.tm-grid) thead { display: none; }
+  table.grid-input:not(.tm-grid), table.grid-input:not(.tm-grid) tbody { display: block; width: 100%; }
+  .table-wrap:has(> table.grid-input:not(.tm-grid)) { overflow-x: visible; }
+  table.grid-input:not(.tm-grid) tr.game-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 12px;
+    border-top: 2px solid var(--header);
+  }
+  table.grid-input:not(.tm-grid) tr.game-row:first-child { border-top: 0; }
+  table.grid-input:not(.tm-grid) tr.game-row > * { border: 0; padding: 0; background: none; }
+  table.grid-input:not(.tm-grid) tr.game-row.has-problems { background: #f8e3e3; }
+  table.grid-input:not(.tm-grid) .game-no { order: 0; font-weight: 700; }
+  table.grid-input:not(.tm-grid) .game-no::before { content: "Game "; }
+  table.grid-input:not(.tm-grid) .row-actions { order: 1; justify-self: end; }
+  table.grid-input:not(.tm-grid) .tA { order: 2; }
+  table.grid-input:not(.tm-grid) .score-cell.tA { order: 3; }
+  table.grid-input:not(.tm-grid) .tB { order: 4; }
+  table.grid-input:not(.tm-grid) .score-cell.tB { order: 5; }
+  table.grid-input:not(.tm-grid) .pick-cell select,
+  table.grid-input:not(.tm-grid) .pick-cell .guest-name { width: 100%; }
+  table.grid-input:not(.tm-grid) .ip-cell { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.85rem; color: var(--muted); }
+  table.grid-input:not(.tm-grid) .ip-cell::before { content: "IP"; }
+  table.grid-input:not(.tm-grid) .score-cell {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    font-size: 0.95rem;
+  }
+  table.grid-input:not(.tm-grid) .score-cell::before { content: attr(data-label); font-weight: 600; }
+  table.grid-input:not(.tm-grid) .score-cell.tA { padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+  table.grid-input:not(.tm-grid) tr.problem-row { display: block; }
+  table.grid-input:not(.tm-grid) tr.problem-row td { display: block; padding: 6px 12px 10px; }
+}
+
+/* Score and sets headers stand out from the player columns. */
+table.stats thead th.score-h { color: var(--cat-yellow); white-space: nowrap; box-shadow: inset 0 -3px 0 var(--cat-yellow); }
+table.stats td.sets-cell { text-align: center; background: rgba(57, 60, 65, 0.03); }

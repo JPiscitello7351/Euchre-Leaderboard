@@ -11,15 +11,16 @@ import * as tournamentModeView from './views/tournament-mode.js';
 
 // Tabs are driven by the URL hash (e.g. #leaderboard) so each tab has a
 // shareable link and the browser back button works on GitHub Pages.
+// `admin` tabs (entering and managing data) sit at the far right of the menu.
 const TABS = [
   { id: 'leaderboard', label: 'Leaderboard', view: leaderboardView },
   { id: 'history', label: 'Game History', view: historyView },
-  { id: 'input', label: 'Game Input', view: inputView },
   { id: 'synergy', label: 'Synergy', view: synergyView },
   { id: 'players', label: 'Player Profile', view: profileView },
   { id: 'tournaments', label: 'Tournament Results', view: tournamentsView },
   { id: 'tournament-mode', label: 'Tournament Mode', view: tournamentModeView },
-  { id: 'manage', label: 'Player Management', view: manageView },
+  { id: 'input', label: 'Game Input', view: inputView, admin: true },
+  { id: 'manage', label: 'Player Management', view: manageView, admin: true },
 ];
 
 const nav = document.querySelector('.tabs');
@@ -28,7 +29,7 @@ let league = null;
 let loadError = null;
 
 nav.innerHTML = TABS.map(
-  (t) => `<a role="tab" href="#${t.id}" data-tab="${t.id}">${t.label}</a>`
+  (t, i) => `<a role="tab" href="#${t.id}" data-tab="${t.id}"${t.admin && !TABS[i - 1]?.admin ? ' class="first-admin"' : ''}>${t.label}</a>`
 ).join('');
 
 function render() {

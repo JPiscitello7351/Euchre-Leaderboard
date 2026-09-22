@@ -27,13 +27,13 @@ function gamesTable(league, games) {
       <th scope="row">${first ? `${g.tournament_phase === 'final' ? 'Finals' : 'Prelims'} R${g.tournament_round}` : ''}</th>
       <td class="c muted">${tableNo}</td>
       ${teamCells(g, 'A', aWon)}
-      <td class="score-cell ${aWon ? 'won' : ''}">${g.team_a_points}</td><td class="c">${blank(g.team_a_sets)}</td>
-      <td class="score-cell ${aWon ? '' : 'won'}">${g.team_b_points}</td><td class="c">${blank(g.team_b_sets)}</td>
+      <td class="c sets-cell">${blank(g.team_a_sets)}</td><td class="score-cell ${aWon ? 'won' : ''}">${g.team_a_points}</td>
+      <td class="score-cell ${aWon ? '' : 'won'}">${g.team_b_points}</td><td class="c sets-cell">${blank(g.team_b_sets)}</td>
       ${teamCells(g, 'B', !aWon)}
     </tr>`;
   });
   return `<div class="table-wrap"><table class="stats history results-games">
-    <thead><tr><th scope="col">Round</th><th scope="col" class="c">Tbl</th>${teamHeader('A')}<th scope="col" class="c">A</th><th scope="col" class="c" title="Team A sets">Sets</th><th scope="col" class="c">B</th><th scope="col" class="c" title="Team B sets">Sets</th>${teamHeader('B')}</tr></thead>
+    <thead><tr><th scope="col">Round</th><th scope="col" class="c">Tbl</th>${teamHeader('A')}<th scope="col" class="c score-h" title="Sets (euchres) team A got">A Sets</th><th scope="col" class="c score-h">A Score</th><th scope="col" class="c score-h">B Score</th><th scope="col" class="c score-h" title="Sets (euchres) team B got">B Sets</th>${teamHeader('B')}</tr></thead>
     <tbody>${rows.join('')}</tbody>
   </table></div>`;
 }

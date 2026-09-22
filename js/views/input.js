@@ -82,7 +82,7 @@ export function render(el, league, { reload }) {
   const perTeam = state.format / 2;
   // One cell for a seat's player (plus a guest-name box for guests) and one for its IP.
   const seatCells = (gi, seat, si) => `
-    <td class="pick-cell">
+    <td class="pick-cell t${seat.team}">
       <select data-g="${gi}" data-s="${si}" data-field="pick" aria-label="Game ${gi + 1} team ${seat.team} player ${seat.seat}">
         <option value="">Player…</option>
         ${choices.map((p) => `<option value="${p.id}" ${seat.pick === String(p.id) ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
@@ -90,9 +90,9 @@ export function render(el, league, { reload }) {
       </select>
       ${seat.pick === 'guest' ? `<input class="guest-name" data-g="${gi}" data-s="${si}" data-field="guest_name" value="${esc(seat.guest_name)}" placeholder="Guest’s name" maxlength="40" aria-label="Game ${gi + 1} guest name">` : ''}
     </td>
-    <td><input type="number" class="num" min="0" max="20" data-g="${gi}" data-s="${si}" data-field="idiot_points" value="${seat.idiot_points}" aria-label="Game ${gi + 1} team ${seat.team} player ${seat.seat} idiot points"></td>`;
+    <td class="ip-cell t${seat.team}"><input type="number" class="num" min="0" max="20" data-g="${gi}" data-s="${si}" data-field="idiot_points" value="${seat.idiot_points}" aria-label="Game ${gi + 1} team ${seat.team} player ${seat.seat} idiot points"></td>`;
   const scoreCell = (gi, game, team) => `
-    <td class="score-cell"><input type="number" class="num score" min="0" max="13" data-g="${gi}" data-field="team_${team.toLowerCase()}_points" value="${game[`team_${team.toLowerCase()}_points`]}" aria-label="Game ${gi + 1} team ${team} score"></td>`;
+    <td class="score-cell t${team}" data-label="Team ${team} score"><input type="number" class="num score" min="0" max="13" data-g="${gi}" data-field="team_${team.toLowerCase()}_points" value="${game[`team_${team.toLowerCase()}_points`]}" aria-label="Game ${gi + 1} team ${team} score"></td>`;
   const teamCells = (gi, game, team) => game.seats.map((s, si) => (s.team === team ? seatCells(gi, s, si) : '')).join('');
   const header = (team) => Array.from({ length: perTeam }, (_, i) => `<th scope="col">${team}${i + 1}</th><th scope="col" title="Idiot points">IP</th>`).join('');
   const columns = 2 + 4 * perTeam + 2 + 1;
@@ -112,11 +112,11 @@ export function render(el, league, { reload }) {
 
     ${state.draft.length ? `<div class="table-wrap"><table class="stats grid-input">
       <thead><tr>
-        <th scope="col">#</th>${header('A')}<th scope="col" class="c">A</th><th scope="col" class="c">B</th>${header('B')}<th scope="col"><span class="visually-hidden">Actions</span></th>
+        <th scope="col">#</th>${header('A')}<th scope="col" class="c score-h">A Score</th><th scope="col" class="c score-h">B Score</th>${header('B')}<th scope="col"><span class="visually-hidden">Actions</span></th>
       </tr></thead>
       <tbody>
         ${state.draft.map((g, gi) => `<tr class="game-row ${allProblems[gi].length ? 'has-problems' : ''}">
-          <th scope="row">${gi + 1}${g.id ? '' : '<span class="new-dot" title="New game">•</span>'}</th>
+          <th scope="row" class="game-no">${gi + 1}${g.id ? '' : '<span class="new-dot" title="New game">•</span>'}</th>
           ${teamCells(gi, g, 'A')}
           ${scoreCell(gi, g, 'A')}${scoreCell(gi, g, 'B')}
           ${teamCells(gi, g, 'B')}
