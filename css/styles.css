@@ -135,7 +135,6 @@ table.stats tbody th {
 }
 table.stats thead th.name-col { position: sticky; left: 0; z-index: 1; }
 table.stats tbody tr:hover > * { background: #e3e4e6; }
-table.stats tr.unranked > * { color: var(--muted); }
 
 /* ---------- Game history ---------- */
 .day h3 { margin: 20px 0 8px; font-size: 1.05rem; }
@@ -283,3 +282,4 @@ button.link { border: 0; background: none; padding: 0; color: inherit; font-weig
 table.schedule td { text-align: left; }
 ol.finals-groups { margin: 6px 0; padding-left: 20px; }
 .players-table tr.former input { color: var(--muted); background: var(--bg); }
+table.matrix td.mirror { background: transparent; }

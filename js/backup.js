@@ -4,7 +4,7 @@
 // spreadsheet import script, so any of them can be restored.
 
 import { supabase } from './data.js';
-import { leaderboard, seasonFor, sortGames, GUEST } from './stats.js';
+import { leaderboard, rankedOnly, seasonFor, sortGames, GUEST } from './stats.js';
 import { tournamentTitle } from './format.js';
 import { rankedIn } from './members.js';
 
@@ -103,7 +103,7 @@ export async function exportExcel(league) {
       const header = ['Rank', 'Player', 'Wins', 'Losses', 'Win %', 'Games Behind', 'Points For', 'Points Against', 'Point Diff',
         'PPG', '+/- PPG', 'Idiot Points', 'Idiot PPG', '+/- IPPG', 'AVG Point Diff', 'AVG Synergy', 'AVG Diff Expected',
         'OW%', 'OOW%', 'SoS', 'SoS Rank', 'Current Streak', 'Longest Win Streak', 'Longest Loss Streak'];
-      const rows = leaderboard(games, { isRanked: rankedIn(league, season) }).map((r) => [
+      const rows = rankedOnly(leaderboard(games, { isRanked: rankedIn(league, season) })).map((r) => [
         r.rank ?? '', r.key === GUEST ? 'Guest' : league.playerById.get(r.key)?.name, r.wins, r.losses, r.winPct, r.gamesBehind ?? '',
         r.pointsFor, r.pointsAgainst, r.pointDiff, r.ppg, r.ppgPlusMinus, r.idiotPoints, r.idiotPpg, r.idiotPpgPlusMinus,
         r.avgPointDiff, r.avgSynergy, r.avgExpectedDiff, r.oppWinPct, r.oppOppWinPct, r.sos, r.sosRank,

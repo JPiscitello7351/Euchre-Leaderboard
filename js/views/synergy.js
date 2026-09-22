@@ -46,8 +46,12 @@ export function render(el, league) {
   const keys = stats ? stats.keys.filter(shown).sort((a, b) => stats.winPct.get(b) - stats.winPct.get(a)) : [];
   const table = stats?.[metric.kind];
 
+  // Partner charts are mirror images (A with B = B with A), so only the
+  // lower half is shown. Opponent charts differ on each side and show both.
+  const order = new Map(keys.map((k, i) => [k, i]));
   const cell = (row, col) => {
     if (row === col) return '<td class="self"></td>';
+    if (metric.kind === 'partners' && order.get(col) > order.get(row)) return '<td class="mirror"></td>';
     const s = table.get(`${row}|${col}`);
     if (!s) return '<td class="muted">·</td>';
     const v = metric.get(s, row, stats);

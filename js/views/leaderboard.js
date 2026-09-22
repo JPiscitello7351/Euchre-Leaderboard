@@ -1,10 +1,10 @@
-import { leaderboard, seasonFor } from '../stats.js';
+import { leaderboard, rankedOnly, seasonFor } from '../stats.js';
 import { rankedIn } from '../members.js';
 import { esc, playerName, num, signed, pct, int } from '../format.js';
 
 // label, tooltip, value -> text. `lowIsGood` columns sort ascending first.
 const COLUMNS = [
-  { id: 'rank', label: '#', tip: 'Rank by win %. Players who weren’t members when the season ended are listed unranked at the bottom.', fmt: int, lowIsGood: true },
+  { id: 'rank', label: '#', tip: 'Rank by win %. Only players who were members when the season ended are listed (for all time: current members).', fmt: int, lowIsGood: true },
   { id: 'name', label: 'Player', tip: 'All guests are combined into one Guest entry.' },
   { id: 'wins', label: 'W', tip: 'Wins', fmt: int },
   { id: 'losses', label: 'L', tip: 'Losses', fmt: int, lowIsGood: true },
@@ -54,7 +54,7 @@ export function render(el, league) {
     (g) => g.format === state.format && (!season || seasonFor(g.played_on, league.seasons)?.id === season.id)
   );
   const isRanked = rankedIn(league, season);
-  let rows = leaderboard(games, { isRanked }).map((r) => ({ ...r, name: playerName(league, r.key) }));
+  let rows = rankedOnly(leaderboard(games, { isRanked })).map((r) => ({ ...r, name: playerName(league, r.key) }));
 
   if (state.sort) {
     const { id, dir } = state.sort;
@@ -91,7 +91,7 @@ export function render(el, league) {
               const sorted = state.sort?.id === c.id ? (state.sort.dir === 1 ? 'ascending' : 'descending') : 'none';
               return `<th scope="col" title="${esc(c.tip)}" aria-sort="${sorted}" class="sortable${c.id === 'name' ? ' name-col' : ''}"><button type="button" data-sort="${c.id}">${esc(c.label)}</button></th>`;
             }).join('')}</tr></thead>
-            <tbody>${rows.map((r) => `<tr class="${r.rank === null ? 'unranked' : ''}">${COLUMNS.map((c) => {
+            <tbody>${rows.map((r) => `<tr>${COLUMNS.map((c) => {
               if (c.id === 'name') return `<th scope="row">${esc(r.name)}</th>`;
               if (c.id === 'streak') return `<td>${streakText(r)}</td>`;
               return `<td>${c.fmt(r[c.id])}</td>`;

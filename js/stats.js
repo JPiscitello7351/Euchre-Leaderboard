@@ -147,6 +147,14 @@ export function leaderboard(games, { isRanked = () => true } = {}) {
   return [...ranked, ...unranked];
 }
 
+// Leaderboard rows without the unranked players (they still count in
+// everyone else's numbers), with strength-of-schedule ranks renumbered.
+export function rankedOnly(rows) {
+  const kept = rows.filter((r) => r.rank !== null).map((r) => ({ ...r }));
+  for (const r of kept) r.sosRank = 1 + kept.filter((o) => o.sos > r.sos).length;
+  return kept;
+}
+
 // results: chronological booleans (true = win).
 function streaks(results) {
   let longestWin = 0;
