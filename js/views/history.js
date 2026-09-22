@@ -1,5 +1,5 @@
 import { seasonFor, sortGames } from '../stats.js';
-import { esc, formatDate, tournamentTitle } from '../format.js';
+import { esc, formatDate, playerLink, tournamentTitle } from '../format.js';
 
 // Every game as one table row, laid out like the league spreadsheets:
 // team A's players and idiot points, both scores, team B's players and
@@ -8,7 +8,7 @@ import { esc, formatDate, tournamentTitle } from '../format.js';
 const state = { format: 4, seasonId: 'all', playerId: 'all' };
 
 function seatName(league, seat) {
-  if (seat.player_id !== null) return esc(league.playerById.get(seat.player_id)?.name ?? `#${seat.player_id}`);
+  if (seat.player_id !== null) return playerLink(league, seat.player_id);
   return `<span class="guest">Guest${seat.guest_name ? ` (${esc(seat.guest_name)})` : ''}</span>`;
 }
 

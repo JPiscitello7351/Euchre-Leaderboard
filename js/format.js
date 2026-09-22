@@ -8,6 +8,15 @@ export function esc(value) {
 
 export const playerName = (league, key) => (key === GUEST ? 'Guest' : league.playerById.get(key)?.name ?? `#${key}`);
 
+// A player's name linked to their profile. Guests have no profile, so they
+// stay plain text.
+export function playerLink(league, key) {
+  const name = esc(playerName(league, key));
+  return key === GUEST || key === null || key === undefined
+    ? `<span class="guest">${name}</span>`
+    : `<a class="player-link" href="#players?p=${key}">${name}</a>`;
+}
+
 const blank = (v) => v === null || v === undefined || Number.isNaN(v);
 
 export const num = (v, digits = 2) => (blank(v) ? '–' : v.toFixed(digits));

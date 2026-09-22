@@ -1,8 +1,9 @@
 import { leaderboard, pairStats, seasonFor, sortGames, GUEST } from '../stats.js';
 import { isCurrentMember, rankedIn } from '../members.js';
-import { esc, playerName, num, signed, pct, formatDate } from '../format.js';
+import { playerBlurb } from '../blurb.js';
+import { esc, playerName, playerLink, num, signed, pct, formatDate } from '../format.js';
+import { hashParams } from '../app.js';
 
-const MIN_PAIR_GAMES = 3; // partners/opponents need this many games to be listed
 
 const state = { playerId: null, format: 4 };
 
@@ -12,6 +13,9 @@ export function render(el, league) {
     el.innerHTML = '<p class="placeholder">No players yet.</p>';
     return;
   }
+  // A link like #players?p=4 opens that player.
+  const wanted = Number(hashParams().get('p'));
+  if (wanted && league.playerById.has(wanted)) state.playerId = wanted;
   state.playerId ??= players[0].id;
   const me = state.playerId;
   const formatGames = league.games.filter((g) => g.format === state.format);
@@ -34,11 +38,11 @@ export function render(el, league) {
     const pairs = pairStats(formatGames);
     for (const [id, s] of pairs.partners) {
       const [a, b] = id.split('|');
-      if (a === String(me) && s.games >= MIN_PAIR_GAMES) partners.push({ key: b === GUEST ? GUEST : Number(b), ...s });
+      if (a === String(me)) partners.push({ key: b === GUEST ? GUEST : Number(b), ...s });
     }
     for (const [id, s] of pairs.opponents) {
       const [a, b] = id.split('|');
-      if (a === String(me) && s.games >= MIN_PAIR_GAMES) opponents.push({ key: b === GUEST ? GUEST : Number(b), ...s });
+      if (a === String(me)) opponents.push({ key: b === GUEST ? GUEST : Number(b), ...s });
     }
     partners.sort((x, y) => y.winPct - x.winPct || y.games - x.games);
     opponents.sort((x, y) => y.winPct - x.winPct || y.games - x.games);
@@ -47,9 +51,11 @@ export function render(el, league) {
   const card = (label, value, sub = '') => `<div class="stat-card"><div class="label">${label}</div><div class="value">${value}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>`;
   const pairList = (list, kind) => list.length
     ? `<table class="stats compact"><thead><tr><th scope="col" class="name-col">${kind}</th><th scope="col">Games</th><th scope="col">Record</th><th scope="col">Win %</th>${kind === 'Partner' ? '<th scope="col">Synergy</th>' : ''}</tr></thead>
-       <tbody>${list.map((p) => `<tr><th scope="row">${esc(playerName(league, p.key))}</th><td>${p.games}</td><td>${p.wins}–${p.games - p.wins}</td><td>${pct(p.winPct)}</td>${kind === 'Partner' ? `<td>${signed(p.avgSynergy)}</td>` : ''}</tr>`).join('')}</tbody></table>`
-    : `<p class="muted">Nobody with ${MIN_PAIR_GAMES}+ games yet.</p>`;
+       <tbody>${list.map((p) => `<tr><th scope="row">${playerLink(league, p.key)}</th><td>${p.games}</td><td>${p.wins}–${p.games - p.wins}</td><td>${pct(p.winPct)}</td>${kind === 'Partner' ? `<td>${signed(p.avgSynergy)}</td>` : ''}</tr>`).join('')}</tbody></table>`
+    : '<p class="muted">No games with anyone yet.</p>';
 
+  // Written from the numbers, so it keeps up as games are added.
+  const about = playerBlurb(league, me, state.format);
   const recent = myGames.slice(-10).reverse();
   const seatName = (s) => (s.player_id === null ? 'Guest' : league.playerById.get(s.player_id)?.name);
 
@@ -65,6 +71,18 @@ export function render(el, league) {
       </div>
     </div>
     ${!overall ? `<p class="placeholder">No ${state.format}-handed games yet.</p>` : `
+      ${about ? `<section class="panel about">
+        <h3>About</h3>
+        <p class="about-intro">${esc(about.intro)}</p>
+        <div class="two-col">
+          <div><h4 class="strengths-head">Strengths</h4><ul class="traits">
+            ${about.strengths.map((t) => `<li><strong>${esc(t.label)}.</strong> ${esc(t.detail)}</li>`).join('')}
+          </ul></div>
+          <div><h4 class="weaknesses-head">Weaknesses</h4><ul class="traits">
+            ${about.weaknesses.map((t) => `<li><strong>${esc(t.label)}.</strong> ${esc(t.detail)}</li>`).join('')}
+          </ul></div>
+        </div>
+      </section>` : ''}
       <div class="stat-cards">
         ${card('Record', `${overall.wins}–${overall.losses}`, `${overall.games} games · all time`)}
         ${card('Win %', pct(overall.winPct), overall.rank ? `Rank ${overall.rank} all time` : 'Unranked (former member)')}
@@ -104,6 +122,8 @@ export function render(el, league) {
 
   el.querySelector('#pf-player').addEventListener('change', (e) => {
     state.playerId = Number(e.target.value);
+    // Keep the address in step without adding a history entry.
+    history.replaceState(null, '', `#players?p=${state.playerId}`);
     render(el, league);
   });
   for (const btn of el.querySelectorAll('[data-format]')) {

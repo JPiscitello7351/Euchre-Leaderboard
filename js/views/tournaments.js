@@ -1,6 +1,6 @@
 import { standings, SCORING } from '../tournament.js';
 import { sortGames } from '../stats.js';
-import { esc, playerName, formatDate, num, tournamentTitle } from '../format.js';
+import { esc, playerName, playerLink, formatDate, num, tournamentTitle } from '../format.js';
 
 const state = { tournamentId: null };
 
@@ -13,7 +13,7 @@ function gamesTable(league, games) {
   const teamCells = (g, tk, won) => g.players
     .filter((p) => p.team === tk)
     .sort((a, b) => a.seat - b.seat)
-    .map((p) => `<td class="${won ? 'won' : ''}">${esc(playerName(league, p.player_id ?? 'guest'))}</td><td class="c">${blank(p.alone_wins)}</td><td class="c ip-cell">${blank(p.idiot_points)}</td>`)
+    .map((p) => `<td class="${won ? 'won' : ''}">${playerLink(league, p.player_id ?? 'guest')}</td><td class="c">${blank(p.alone_wins)}</td><td class="c ip-cell">${blank(p.idiot_points)}</td>`)
     .join('');
   let lastRound = null;
   let tableNo = 0;
@@ -66,7 +66,7 @@ export function render(el, league) {
         <p class="muted">Points: ${SCORING.point} per point scored, +${SCORING.set} per team set, +${SCORING.alone} per alone win, +${SCORING.win} per win, ${SCORING.idiot} per idiot point. Ties: wins, then alone wins, then sets, then fewest points allowed per game.</p>
         <div class="table-wrap"><table class="stats">
           <thead><tr><th scope="col">Place</th><th scope="col" class="name-col">Player</th><th scope="col">Total</th><th scope="col">Prelims</th><th scope="col">Finals</th><th scope="col">W–L</th><th scope="col">Points</th><th scope="col">Sets</th><th scope="col">Alone</th><th scope="col">IP</th><th scope="col" title="Points allowed per game (4th tiebreaker, lower is better)">Allowed/G</th></tr></thead>
-          <tbody>${rows.map((r) => `<tr><td>${r.place}</td><th scope="row">${esc(playerName(league, r.key))}</th><td><strong>${r.total}</strong></td><td>${r.prelimTotal}</td><td>${r.finalTotal || '–'}</td><td>${r.wins}–${r.losses}</td><td>${r.gamePoints}</td><td>${r.sets}</td><td>${r.aloneWins}</td><td>${r.idiotPoints}</td><td>${num(r.oppPpg, 1)}</td></tr>`).join('')}</tbody>
+          <tbody>${rows.map((r) => `<tr><td>${r.place}</td><th scope="row">${playerLink(league, r.key)}</th><td><strong>${r.total}</strong></td><td>${r.prelimTotal}</td><td>${r.finalTotal || '–'}</td><td>${r.wins}–${r.losses}</td><td>${r.gamePoints}</td><td>${r.sets}</td><td>${r.aloneWins}</td><td>${r.idiotPoints}</td><td>${num(r.oppPpg, 1)}</td></tr>`).join('')}</tbody>
         </table></div>
       </section>
       <section class="panel">
@@ -83,7 +83,7 @@ export function render(el, league) {
         ${t.schedule.note ? `<p class="muted">${esc(t.schedule.note)}</p>` : ''}
         <div class="table-wrap"><table class="stats">
           <thead><tr><th scope="col">Place</th><th scope="col" class="name-col">Player</th><th scope="col">Total</th></tr></thead>
-          <tbody>${recorded.map((r) => `<tr><td>${r.place}</td><th scope="row">${esc(playerName(league, r.player_id))}</th><td><strong>${r.points}</strong></td></tr>`).join('')}</tbody>
+          <tbody>${recorded.map((r) => `<tr><td>${r.place}</td><th scope="row">${playerLink(league, r.player_id)}</th><td><strong>${r.points}</strong></td></tr>`).join('')}</tbody>
         </table></div>
       </section>`;
   } else {

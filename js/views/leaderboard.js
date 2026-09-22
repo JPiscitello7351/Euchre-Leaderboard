@@ -1,6 +1,6 @@
 import { leaderboard, rankedOnly, seasonFor } from '../stats.js';
 import { rankedIn } from '../members.js';
-import { esc, playerName, num, signed, pct, int } from '../format.js';
+import { esc, playerName, playerLink, num, signed, pct, int } from '../format.js';
 
 // label, tooltip, value -> text. `lowIsGood` columns sort ascending first.
 const COLUMNS = [
@@ -92,7 +92,7 @@ export function render(el, league) {
               return `<th scope="col" title="${esc(c.tip)}" aria-sort="${sorted}" class="sortable${c.id === 'name' ? ' name-col' : ''}"><button type="button" data-sort="${c.id}">${esc(c.label)}</button></th>`;
             }).join('')}</tr></thead>
             <tbody>${rows.map((r) => `<tr>${COLUMNS.map((c) => {
-              if (c.id === 'name') return `<th scope="row">${esc(r.name)}</th>`;
+              if (c.id === 'name') return `<th scope="row">${playerLink(league, r.key)}</th>`;
               if (c.id === 'streak') return `<td>${streakText(r)}</td>`;
               return `<td>${c.fmt(r[c.id])}</td>`;
             }).join('')}</tr>`).join('')}</tbody>

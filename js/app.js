@@ -32,8 +32,14 @@ nav.innerHTML = TABS.map(
   (t, i) => `<a role="tab" href="#${t.id}" data-tab="${t.id}"${t.admin && !TABS[i - 1]?.admin ? ' class="first-admin"' : ''}>${t.label}</a>`
 ).join('');
 
+// The hash is "#tab" or "#tab?name=value" (e.g. #players?p=4).
+export function hashParams() {
+  return new URLSearchParams(location.hash.split('?')[1] ?? '');
+}
+
 function render() {
-  const current = TABS.find((t) => `#${t.id}` === location.hash) ?? TABS[0];
+  const tabId = location.hash.slice(1).split('?')[0];
+  const current = TABS.find((t) => t.id === tabId) ?? TABS[0];
   for (const link of nav.querySelectorAll('a')) {
     const active = link.dataset.tab === current.id;
     link.setAttribute('aria-selected', active);

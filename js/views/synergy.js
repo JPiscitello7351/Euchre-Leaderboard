@@ -1,6 +1,6 @@
 import { pairStats, seasonFor } from '../stats.js';
 import { rankedIn } from '../members.js';
-import { esc, playerName, num, signed, pct, int } from '../format.js';
+import { esc, playerName, playerLink, num, signed, pct, int } from '../format.js';
 
 // Each metric reads one cell. `kind` picks the table: partners (same team)
 // or opponents (row player against column player). `neutral`/`spread` set
@@ -98,9 +98,9 @@ export function render(el, league) {
         ? '<p class="placeholder">No games for this selection.</p>'
         : `<div class="table-wrap"><table class="stats matrix">
             <thead><tr><th scope="col" class="name-col">${metric.kind === 'partners' ? 'Partner →' : 'Opponent →'}</th>
-              ${keys.map((k) => `<th scope="col">${esc(playerName(league, k))}</th>`).join('')}</tr></thead>
+              ${keys.map((k) => `<th scope="col">${playerLink(league, k)}</th>`).join('')}</tr></thead>
             <tbody>
-              ${keys.map((row) => `<tr><th scope="row">${esc(playerName(league, row))}</th>${keys.map((col) => cell(row, col)).join('')}</tr>`).join('')}
+              ${keys.map((row) => `<tr><th scope="row">${playerLink(league, row)}</th>${keys.map((col) => cell(row, col)).join('')}</tr>`).join('')}
               ${metric.id === 'idiotPpg' ? allPartnersRow() : ''}
             </tbody>
           </table></div>`
